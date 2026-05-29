@@ -1,0 +1,1624 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Elsi Sleep Sound App v0.19</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #151513;
+      --panel: #22211f;
+      --text: #efe8da;
+      --muted: #b8ad9b;
+      --line: rgba(255,255,255,0.12);
+      --accent: #d8b66a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(216,182,106,0.11), transparent 34rem),
+        linear-gradient(180deg, #211f1c 0%, var(--bg) 62%, #10100e 100%);
+      color: var(--text);
+    }
+    main {
+      width: min(820px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 24px 16px 34px;
+      display: grid;
+      gap: 16px;
+    }
+    header { text-align: center; }
+    h1 { margin: 0; font-size: clamp(34px, 9vw, 58px); letter-spacing: 0.04em; font-weight: 650; }
+    .version { margin-top: 6px; color: var(--muted); font-size: 13px; }
+    .app-subtitle { margin-top: 6px; color: var(--muted); font-size: 13px; letter-spacing: 0.02em; }
+    section {
+      background: rgba(34,33,31,0.88);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 22px 70px rgba(0,0,0,0.28);
+      padding: 18px;
+    }
+    .transport { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    button {
+      min-height: 54px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #353128;
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+    }
+    button.primary { background: #5a4a2b; border-color: rgba(216,182,106,0.48); }
+    button:disabled { opacity: 0.38; cursor: default; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    label.control {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.035);
+    }
+    label.control span:first-child { font-size: 14px; }
+    output { color: var(--muted); min-width: 5.5em; text-align: right; font-variant-numeric: tabular-nums; }
+    input[type="range"] { grid-column: 1 / -1; width: 100%; }
+    .status { min-height: 22px; color: var(--muted); text-align: center; font-size: 14px; margin-top: 10px; }
+    pre {
+      margin: 0;
+      max-height: 340px;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #0c0c0b;
+      color: #d6d0c4;
+      font-size: 11px;
+      line-height: 1.35;
+      white-space: pre;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+    .note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; text-align: center; }
+    .user-note {
+      margin: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.035);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      text-align: center;
+    }
+    .user-note strong { color: var(--text); font-weight: 600; }
+    .app-footer {
+      justify-self: end;
+      color: rgba(184,173,155,0.30);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+      padding: 0 4px;
+    }
+
+    .scene-panel { display: grid; gap: 14px; text-align: center; }
+    .scene-title { margin: 0; font-size: 24px; font-weight: 620; }
+    .scene-description { margin: 0; color: var(--muted); line-height: 1.45; }
+    .scene-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .scene-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.035);
+      padding: 13px;
+      display: grid;
+      gap: 10px;
+      text-align: left;
+    }
+    .scene-card strong { font-size: 18px; }
+    .scene-card small { color: var(--muted); line-height: 1.35; }
+    .scene-level-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+    .scene-level-row button { min-height: 40px; border-radius: 13px; font-size: 20px; }
+    .mode-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .mode-row button { min-height: 48px; border-radius: 14px; }
+    .sound-mode-grid button:nth-child(n+3) { opacity: 0.82; }
+    .mode-row button.is-active { background: var(--accent); color: #171511; border-color: rgba(216,182,106,0.85); }
+    button.is-transitioning { animation: transitionPulse 0.55s ease-in-out infinite alternate; }
+    @keyframes transitionPulse {
+      from { filter: brightness(0.82); box-shadow: 0 0 0 rgba(216,182,106,0); }
+      to { filter: brightness(1.22); box-shadow: 0 0 18px rgba(216,182,106,0.30); }
+    }
+    .scene-level-row output { min-width: 4.5em; text-align: center; }
+    .technical-toggle { min-height: 30px; width: fit-content; justify-self: center; padding: 4px 10px; border-radius: 999px; color: var(--muted); font-size: 12px; opacity: 0.82; }
+    .technical-info { display: grid; gap: 6px; color: var(--muted); font-size: 13px; text-align: center; margin-bottom: 12px; }
+    .technical-section.is-hidden, .is-hidden { display: none; }
+    .preset-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+    .preset-actions button { min-height: 44px; border-radius: 14px; font-size: 14px; }
+    .control-groups { display: grid; gap: 14px; margin: 14px 0; }
+    .control-group {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.025);
+    }
+    .control-group-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .control-group-note {
+      margin: -6px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    @media (max-width: 620px) { .scene-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Elsi</h1>
+    <div class="app-subtitle">v0.19 · Vacuum and Hum sound choices</div>
+  </header>
+
+  <section class="user-note" aria-label="User note">
+    <strong>Calm vacuum sound for sleep testing.</strong><br />
+    Start the sound, choose Vacuum or Hum, and adjust the volume gently. For overnight use, keep the screen awake or use Add to Home Screen so iOS does not pause the app. Happy sleep.
+  </section>
+
+  <section class="scene-panel" aria-label="Vacuum scenes">
+    <div class="transport">
+      <button id="startStopBtn" class="primary">Start</button>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card" id="volumeCard">
+        <strong>Volume</strong>
+        <div class="scene-level-row">
+          <button id="volumeDownBtn" type="button" aria-label="Lower volume">−</button>
+          <output id="volumeOut">0 dB</output>
+          <button id="volumeUpBtn" type="button" aria-label="Raise volume">+</button>
+        </div>
+      </div>
+      <div class="scene-card" id="distanceCard">
+        <strong>Sound</strong>
+        <div class="mode-row sound-mode-grid">
+          <button id="nearModeBtn" type="button" aria-label="Select full vacuum sound">Vacuum</button>
+          <button id="humModeBtn" type="button" aria-label="Select full hum sound">Hum</button>
+          <button id="farModeBtn" type="button" aria-label="Select soft vacuum sound">Vacuum soft</button>
+          <button id="humSoftModeBtn" type="button" aria-label="Select soft hum sound">Hum soft</button>
+        </div>
+      </div>
+    </div>
+    <button id="technicalToggleBtn" class="technical-toggle" type="button">Tech</button>
+  </section>
+
+  <section id="technicalSection" class="technical-section is-hidden">
+    <div class="technical-info">
+      <div class="version">v0.20 · grouped tonal/noise technical controls</div>
+      <div id="status" class="status">Ready. Samples load when starting: assets/vacuum-loop.wav or assets/hum.wav.</div>
+      <div id="wakeLockStatus" class="status">Wake Lock: not requested</div>
+      <div class="note">Tonal bed and noise bed are routed separately. Only one tonal source is active at a time; scene strength now ramps on a separate tonal bed gain to avoid abrupt jumps.</div>
+    </div>
+    <div id="controlSection" class="control-groups" aria-label="Runtime test controls">
+      <div class="control-group" aria-label="Tonal bed controls">
+        <h2 class="control-group-title">Tonal bed</h2>
+        <p class="control-group-note">One pitched source at a time: Vacuum or Hum. These controls shape the tonal foreground.</p>
+        <div class="control-grid">
+          <label class="control">
+            <span>Load / pitch pull</span>
+            <output id="loadSigned01Out">0.00</output>
+            <input id="loadSigned01" type="range" min="-1" max="1" step="0.01" value="0" />
+          </label>
+
+          <label class="control">
+            <span>Slow load motion</span>
+            <output id="loadLfoDepth01Out">0.04</output>
+            <input id="loadLfoDepth01" type="range" min="0" max="0.30" step="0.01" value="0.04" />
+          </label>
+
+          <label class="control">
+            <span>Vacuum tone</span>
+            <output id="motorVolume01Out">0.40</output>
+            <input id="motorVolume01" type="range" min="0" max="1.5" step="0.01" value="0.40" />
+          </label>
+
+          <label class="control">
+            <span>Tonal loop crossfade</span>
+            <output id="motorPreprocessMsOut">120 ms</output>
+            <input id="motorPreprocessMs" type="range" min="0" max="300" step="5" value="120" />
+          </label>
+
+          <label class="control">
+            <span>Tonal pan</span>
+            <output id="motorPan01Out">0.00</output>
+            <input id="motorPan01" type="range" min="-1" max="1" step="0.01" value="0.00" />
+          </label>
+
+          <label class="control">
+            <span>Tonal drift</span>
+            <output id="motorPanDrift01Out">0.25</output>
+            <input id="motorPanDrift01" type="range" min="0" max="1" step="0.01" value="0.25" />
+          </label>
+        </div>
+      </div>
+
+      <div class="control-group" aria-label="Noise bed controls">
+        <h2 class="control-group-title">Noise bed</h2>
+        <p class="control-group-note">Shared non-tonal masking layer under all sounds: air, texture, rumble, width, and output checks.</p>
+        <div class="control-grid">
+          <label class="control">
+            <span>Air wash</span>
+            <output id="airVolume01Out">0.65</output>
+            <input id="airVolume01" type="range" min="0" max="1" step="0.01" value="0.65" />
+          </label>
+
+          <label class="control">
+            <span>Soft texture low</span>
+            <output id="velvetLow01Out">0.70</output>
+            <input id="velvetLow01" type="range" min="0" max="1" step="0.01" value="0.70" />
+          </label>
+
+          <label class="control">
+            <span>Soft texture high</span>
+            <output id="velvetHigh01Out">0.60</output>
+            <input id="velvetHigh01" type="range" min="0" max="1" step="0.01" value="0.60" />
+          </label>
+
+          <label class="control">
+            <span>Masking noise</span>
+            <output id="harmonicNoise01Out">0.75</output>
+            <input id="harmonicNoise01" type="range" min="0" max="1" step="0.01" value="0.75" />
+          </label>
+
+          <label class="control">
+            <span>Body rumble 30–60 Hz</span>
+            <output id="lowRumble01Out">0.00</output>
+            <input id="lowRumble01" type="range" min="0" max="1.5" step="0.01" value="0.00" />
+          </label>
+
+          <label class="control">
+            <span>Noise width</span>
+            <output id="stereoWidth01Out">0.60</output>
+            <input id="stereoWidth01" type="range" min="0" max="1" step="0.01" value="0.60" />
+          </label>
+
+          <label class="control">
+            <span>Texture motion</span>
+            <output id="velvetMotion01Out">0.50</output>
+            <input id="velvetMotion01" type="range" min="0" max="1" step="0.01" value="0.50" />
+          </label>
+
+          <label class="control">
+            <span>Mono check</span>
+            <output id="monoCheckOut">off</output>
+            <input id="monoCheck" type="range" min="0" max="1" step="1" value="0" />
+          </label>
+
+          <label class="control">
+            <span>Master volume</span>
+            <output id="masterVolume01Out">0.70</output>
+            <input id="masterVolume01" type="range" min="0" max="1" step="0.01" value="0.70" />
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="preset-actions">
+      <button id="reprocessBtn" type="button">Reprocess loop</button>
+      <button id="stateBtn" type="button">Log state</button>
+      <button id="editNearBtn" type="button">Edit Near endpoint</button>
+      <button id="editFarBtn" type="button">Edit Far endpoint</button>
+      <button id="editRumbleBtn" type="button">Edit Rumble endpoint</button>
+      <button id="editHumBtn" type="button">Edit Hum endpoint</button>
+      <button id="editHumSoftBtn" type="button">Edit Hum soft endpoint</button>
+      <button id="saveNearBtn" type="button">Save to Near</button>
+      <button id="saveFarBtn" type="button">Save to Far</button>
+      <button id="saveRumbleBtn" type="button">Save to Rumble</button>
+      <button id="saveHumBtn" type="button">Save to Hum</button>
+      <button id="saveHumSoftBtn" type="button">Save to Hum soft</button>
+      <button id="resetPresetsBtn" type="button">Reset presets</button>
+    </div>
+  </section>
+
+  <section id="debugSection" class="technical-section is-hidden">
+    <pre id="debugView"></pre>
+  </section>
+
+  <footer class="app-footer">JukkaTLinjama 2026</footer>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const VERSION = "elsi-vacuum-app-v0.20";
+  const DEFAULT_SAMPLE_URL = "assets/vacuum-loop.wav";
+  const DEFAULT_HUM_SAMPLE_URL = "assets/hum.wav";
+  // Embedded WAV loop placeholder. Paste a data URL here for standalone file:// fallback.
+  // Example: "data:audio/wav;base64,UklGR..."
+  const EMBEDDED_SAMPLE_DATA_URL = "data:audio/wav;base64,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";
+  const LOAD_LFO_MIN_PERIOD_SEC = 3;
+  const LOAD_LFO_MAX_PERIOD_SEC = 8;
+
+  const ui = {
+    startStopBtn: document.getElementById("startStopBtn"),
+    technicalToggleBtn: document.getElementById("technicalToggleBtn"),
+    reprocessBtn: document.getElementById("reprocessBtn"),
+    stateBtn: document.getElementById("stateBtn"),
+    distanceCard: document.getElementById("distanceCard"),
+    volumeCard: document.getElementById("volumeCard"),
+    nearModeBtn: document.getElementById("nearModeBtn"),
+    farModeBtn: document.getElementById("farModeBtn"),
+    rumbleModeBtn: document.getElementById("rumbleModeBtn"),
+    humModeBtn: document.getElementById("humModeBtn"),
+    humSoftModeBtn: document.getElementById("humSoftModeBtn"),
+    volumeDownBtn: document.getElementById("volumeDownBtn"),
+    volumeUpBtn: document.getElementById("volumeUpBtn"),
+    volumeOut: document.getElementById("volumeOut"),
+    editNearBtn: document.getElementById("editNearBtn"),
+    editFarBtn: document.getElementById("editFarBtn"),
+    editRumbleBtn: document.getElementById("editRumbleBtn"),
+    sceneTitle: document.getElementById("sceneTitle"),
+    sceneDescription: document.getElementById("sceneDescription"),
+    technicalSection: document.getElementById("technicalSection"),
+    controlSection: document.getElementById("controlSection"),
+    debugSection: document.getElementById("debugSection"),
+    saveNearBtn: document.getElementById("saveNearBtn"),
+    saveFarBtn: document.getElementById("saveFarBtn"),
+    saveRumbleBtn: document.getElementById("saveRumbleBtn"),
+    editHumBtn: document.getElementById("editHumBtn"),
+    editHumSoftBtn: document.getElementById("editHumSoftBtn"),
+    saveHumBtn: document.getElementById("saveHumBtn"),
+    saveHumSoftBtn: document.getElementById("saveHumSoftBtn"),
+    resetPresetsBtn: document.getElementById("resetPresetsBtn"),
+    status: document.getElementById("status"),
+    wakeLockStatus: document.getElementById("wakeLockStatus"),
+    debugView: document.getElementById("debugView")
+  };
+
+  const controlKeys = [
+    "loadSigned01",
+    "loadLfoDepth01",
+    "motorVolume01",
+    "motorPreprocessMs",
+    "airVolume01",
+    "velvetLow01",
+    "velvetHigh01",
+    "harmonicNoise01",
+    "lowRumble01",
+    "stereoWidth01",
+    "motorPan01",
+    "motorPanDrift01",
+    "velvetMotion01",
+    "monoCheck",
+    "masterVolume01"
+  ];
+
+  const APP_VOLUME_STEP_DB = 3;
+  const APP_VOLUME_MIN_DB = -36;
+  const APP_VOLUME_MAX_DB = 12;
+  const START_STOP_TRANSITION_SEC = 2.0;
+  const VOLUME_TRANSITION_SEC = 3.0;
+  const MODE_TRANSITION_SEC = 3.0;
+  const TONAL_CROSSFADE_SEC = 3.0;
+  const HUM_GAIN_BOOST_DB = 12.0;
+  const HUM_GAIN_BOOST = dbToGain(HUM_GAIN_BOOST_DB);
+  const ONGOING_CONTROL_RAMP_SEC = 0.12;
+  const STOP_FADE_SEC = 2.0;
+
+  const DEFAULT_SCENE_PRESETS = {
+    near: {
+      loadSigned01: 0.12,
+      loadLfoDepth01: 0.035,
+      motorVolume01: 0.62,
+      motorPreprocessMs: 120,
+      airVolume01: 0.34,
+      velvetLow01: 0.34,
+      velvetHigh01: 0.22,
+      harmonicNoise01: 0.60,
+      lowRumble01: 0.20,
+      stereoWidth01: 0.75,
+      motorPan01: 0.00,
+      motorPanDrift01: 0.35,
+      velvetMotion01: 0.70,
+      monoCheck: false,
+      masterVolume01: 0.64
+    },
+    far: {
+      loadSigned01: -0.08,
+      loadLfoDepth01: 0.018,
+      motorVolume01: 0.18,
+      motorPreprocessMs: 160,
+      airVolume01: 0.58,
+      velvetLow01: 0.54,
+      velvetHigh01: 0.34,
+      harmonicNoise01: 0.18,
+      lowRumble01: 1.00,
+      stereoWidth01: 1.00,
+      motorPan01: 0.00,
+      motorPanDrift01: 0.25,
+      velvetMotion01: 1.00,
+      monoCheck: false,
+      masterVolume01: 0.56
+    },
+  
+    rumble: {
+      loadSigned01: -0.14,
+      loadLfoDepth01: 0.012,
+      motorVolume01: 0.12,
+      motorPreprocessMs: 180,
+      airVolume01: 0.54,
+      velvetLow01: 0.62,
+      velvetHigh01: 0.25,
+      harmonicNoise01: 0.10,
+      lowRumble01: 1.50,
+      stereoWidth01: 1.00,
+      motorPan01: 0.00,
+      motorPanDrift01: 0.18,
+      velvetMotion01: 0.90,
+      monoCheck: false,
+      masterVolume01: 0.58
+    }
+  };
+
+  DEFAULT_SCENE_PRESETS.hum = {
+    loadSigned01: -0.06,
+    loadLfoDepth01: 0.006,
+    motorVolume01: 0.32,
+    motorPreprocessMs: 180,
+    airVolume01: 0.34,
+    velvetLow01: 0.50,
+    velvetHigh01: 0.20,
+    harmonicNoise01: 0.08,
+    lowRumble01: 0.35,
+    stereoWidth01: 0.85,
+    motorPan01: 0.00,
+    motorPanDrift01: 0.10,
+    velvetMotion01: 0.60,
+    monoCheck: false,
+    masterVolume01: 0.56
+  };
+
+  DEFAULT_SCENE_PRESETS.humSoft = {
+    loadSigned01: -0.10,
+    loadLfoDepth01: 0.004,
+    motorVolume01: 0.18,
+    motorPreprocessMs: 190,
+    airVolume01: 0.30,
+    velvetLow01: 0.42,
+    velvetHigh01: 0.16,
+    harmonicNoise01: 0.05,
+    lowRumble01: 0.20,
+    stereoWidth01: 0.80,
+    motorPan01: 0.00,
+    motorPanDrift01: 0.08,
+    velvetMotion01: 0.50,
+    monoCheck: false,
+    masterVolume01: 0.46
+  };
+
+
+  const state = {
+    audioCtx: null,
+    masterGain: null,
+    tonalBedGain: null,
+    noiseBedGain: null,
+    motorGain: null,
+    airGain: null,
+    harmonicNoiseGain: null,
+    lowRumbleGain: null,
+    humGain: null,
+    velvetLowGain: null,
+    velvetHighGain: null,
+    motorPanner: null,
+    airPannerA: null,
+    airPannerB: null,
+    harmonicNoisePanner: null,
+    lowRumblePanner: null,
+    humPanner: null,
+    lowRumbleFilter: null,
+    velvetLowPanner: null,
+    velvetHighPanner: null,
+    motorSource: null,
+    airSourceA: null,
+    airSourceB: null,
+    harmonicNoiseSource: null,
+    lowRumbleSource: null,
+    humSource: null,
+    velvetLowSource: null,
+    velvetHighSource: null,
+    rawSampleBuffer: null,
+    rawHumBuffer: null,
+    processedHumBuffer: null,
+    processedMotorBuffer: null,
+    lastProcessInfo: null,
+    isLoadingSample: false,
+    isRunning: false,
+    wakeLock: null,
+    wakeLockSupported: "wakeLock" in navigator,
+    wakeLockStatus: "not requested",
+    transitionUntilMs: 0,
+    transitionRampSec: ONGOING_CONTROL_RAMP_SEC,
+    tonalTransition: null,
+    loadLfoTimer: null,
+    loadLfo: {
+      phase: 0,
+      value: 0,
+      effectiveLoad: 0,
+      currentPeriodSec: LOAD_LFO_MIN_PERIOD_SEC,
+      lastTimeSec: null
+    },
+    stereoMotion: {
+      motorDrift: 0,
+      velvetLowDrift: 0,
+      velvetHighDrift: 0
+    },
+    isTechnicalVisible: false,
+    editingPresetKey: "far",
+    modeKey: "far",
+    distance01: 1.0,
+    appVolumeDb: 0,
+    scenePresets: JSON.parse(JSON.stringify(DEFAULT_SCENE_PRESETS)),
+    controls: {
+      load01: 0,
+      loadLfoDepth01: 0.04,
+      motorVolume01: 0.40,
+      motorPreprocessMs: 120,
+      airVolume01: 0.65,
+      velvetLow01: 0.70,
+      velvetHigh01: 0.60,
+      harmonicNoise01: 0.75,
+      lowRumble01: 0.00,
+      stereoWidth01: 1.00,
+      motorPan01: 0.00,
+      motorPanDrift01: 0.25,
+      velvetMotion01: 1.00,
+      monoCheck: false,
+      masterVolume01: 0.70
+    }
+  };
+
+  function setStatus(message) { ui.status.textContent = message; }
+  function setWakeLockStatus(message) {
+    state.wakeLockStatus = message;
+    if (ui.wakeLockStatus) ui.wakeLockStatus.textContent = `Wake Lock: ${message}`;
+    updateDebugView();
+  }
+  function clamp(value, min, max) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return min;
+    return Math.max(min, Math.min(max, n));
+  }
+  function clamp01(value) { return clamp(value, 0, 1); }
+  function clampSigned01(value) { return clamp(value, -1, 1); }
+  function dbToGain(db) { return Math.pow(10, db / 20); }
+
+  function gainToDb(gain) { return 20 * Math.log10(Math.max(1e-6, gain)); }
+  function formatDb(db) {
+    const rounded = Math.round(db);
+    return `${rounded > 0 ? "+" : ""}${rounded} dB`;
+  }
+  function cloneControlsForPreset() {
+    return {
+      loadSigned01: state.controls.load01,
+      loadLfoDepth01: state.controls.loadLfoDepth01,
+      motorVolume01: state.controls.motorVolume01,
+      motorPreprocessMs: state.controls.motorPreprocessMs,
+      airVolume01: state.controls.airVolume01,
+      velvetLow01: state.controls.velvetLow01,
+      velvetHigh01: state.controls.velvetHigh01,
+      harmonicNoise01: state.controls.harmonicNoise01,
+      lowRumble01: state.controls.lowRumble01,
+      stereoWidth01: state.controls.stereoWidth01,
+      motorPan01: state.controls.motorPan01,
+      motorPanDrift01: state.controls.motorPanDrift01,
+      velvetMotion01: state.controls.velvetMotion01,
+      monoCheck: state.controls.monoCheck,
+      masterVolume01: state.controls.masterVolume01
+    };
+  }
+  function getModeLabel(modeKey) {
+    if (modeKey === "near") return "Vacuum";
+    if (modeKey === "far") return "Vacuum soft";
+    if (modeKey === "rumble") return "Rumble";
+    if (modeKey === "hum") return "Hum";
+    if (modeKey === "humSoft") return "Hum soft";
+    return "Far";
+  }
+
+  function getModeButton(modeKey) {
+    if (modeKey === "near") return ui.nearModeBtn;
+    if (modeKey === "far") return ui.farModeBtn;
+    if (modeKey === "rumble") return ui.rumbleModeBtn;
+    if (modeKey === "hum") return ui.humModeBtn;
+    if (modeKey === "humSoft") return ui.humSoftModeBtn;
+    return null;
+  }
+
+  function beginCalmTransition(seconds) {
+    const durationSec = Math.max(0.05, Number(seconds) || ONGOING_CONTROL_RAMP_SEC);
+    state.transitionUntilMs = performance.now() + durationSec * 1000;
+    state.transitionRampSec = durationSec;
+  }
+
+  function getActiveRampSeconds() {
+    return performance.now() < state.transitionUntilMs ? state.transitionRampSec : ONGOING_CONTROL_RAMP_SEC;
+  }
+
+  function markTransition(button, seconds = START_STOP_TRANSITION_SEC) {
+    if (!button) return;
+    const durationMs = Math.max(100, seconds * 1000);
+    button.classList.remove("is-transitioning");
+    void button.offsetWidth;
+    button.classList.add("is-transitioning");
+    window.setTimeout(() => button.classList.remove("is-transitioning"), durationMs);
+  }
+
+  function selectMode(modeKey) {
+    if (!state.scenePresets[modeKey]) return;
+    const previousModeKey = state.modeKey || "far";
+    if (previousModeKey !== modeKey && state.audioCtx) {
+      state.tonalTransition = {
+        fromModeKey: previousModeKey,
+        toModeKey: modeKey,
+        startTimeSec: state.audioCtx.currentTime,
+        durationSec: TONAL_CROSSFADE_SEC
+      };
+    }
+    state.modeKey = modeKey;
+    state.editingPresetKey = modeKey;
+    // Keep distance01 for backwards-compatible debug output only.
+    state.distance01 = modeKey === "near" ? 0 : 1;
+    beginCalmTransition(MODE_TRANSITION_SEC);
+    applySceneMode(MODE_TRANSITION_SEC);
+    markTransition(getModeButton(modeKey), MODE_TRANSITION_SEC);
+    setStatus(`Changing mode to ${getModeLabel(modeKey)}…`);
+  }
+
+  function setAppVolume(deltaDb) {
+    state.appVolumeDb = clamp(state.appVolumeDb + deltaDb, APP_VOLUME_MIN_DB, APP_VOLUME_MAX_DB);
+    beginCalmTransition(VOLUME_TRANSITION_SEC);
+    applySceneMode(VOLUME_TRANSITION_SEC);
+    markTransition(deltaDb >= 0 ? ui.volumeUpBtn : ui.volumeDownBtn, VOLUME_TRANSITION_SEC);
+    setStatus(`Changing volume to ${formatDb(state.appVolumeDb)}…`);
+  }
+
+  function getDistanceWeights() {
+    const modeKey = state.modeKey || "far";
+    return {
+      near: modeKey === "near" ? 1 : 0,
+      far: modeKey === "far" ? 1 : 0,
+      rumble: modeKey === "rumble" ? 1 : 0,
+      hum: modeKey === "hum" ? 1 : 0,
+      humSoft: modeKey === "humSoft" ? 1 : 0
+    };
+  }
+
+  function applySceneMode(rampSeconds = APP_TRANSITION_SEC) {
+    const modeKey = state.scenePresets[state.modeKey] ? state.modeKey : "far";
+    const preset = { ...state.scenePresets[modeKey] };
+
+    // Mode selection uses one tonal motor endpoint at a time. Rumble is Far plus
+    // stronger low-frequency bed, not a second simultaneous motor scene.
+    preset.masterVolume01 = clamp(preset.masterVolume01 * dbToGain(state.appVolumeDb), 0, 1);
+    updateControl(preset, rampSeconds);
+    updateSceneUi();
+  }
+
+  function applyScenePresetMorph() {
+    applySceneMode(MODE_TRANSITION_SEC);
+  }
+
+  function editPreset(sceneKey) {
+    if (!state.scenePresets[sceneKey]) return;
+    state.editingPresetKey = sceneKey;
+    updateControl(state.scenePresets[sceneKey], MODE_TRANSITION_SEC);
+    updateSceneUi();
+    setStatus(`Editing ${getModeLabel(sceneKey)} endpoint. Change technical sliders, then save.`);
+  }
+
+  function saveCurrentToPreset(sceneKey) {
+    if (!state.scenePresets[sceneKey]) return;
+    state.scenePresets[sceneKey] = cloneControlsForPreset();
+    state.editingPresetKey = sceneKey;
+    applySceneMode(MODE_TRANSITION_SEC);
+    setStatus(`Saved current technical controls to ${getModeLabel(sceneKey)} endpoint.`);
+  }
+
+  function resetScenePresets() {
+    state.scenePresets = JSON.parse(JSON.stringify(DEFAULT_SCENE_PRESETS));
+    state.modeKey = "far";
+    state.distance01 = 1.0;
+    state.appVolumeDb = 0;
+    state.editingPresetKey = "far";
+    applySceneMode(MODE_TRANSITION_SEC);
+    setStatus("Reset Vacuum/Hum sound presets.");
+  }
+  function toggleTechnicalUi() {
+    state.isTechnicalVisible = !state.isTechnicalVisible;
+    updateTechnicalUi();
+  }
+  function updateTechnicalUi() {
+    [ui.technicalSection, ui.controlSection, ui.debugSection].forEach(section => {
+      if (section) section.classList.toggle("is-hidden", !state.isTechnicalVisible);
+    });
+    if (ui.technicalToggleBtn) ui.technicalToggleBtn.textContent = state.isTechnicalVisible ? "Hide tech" : "Tech";
+  }
+  function updateSceneUi() {
+    const modeKey = state.modeKey || "far";
+
+    if (ui.volumeOut) ui.volumeOut.value = formatDb(state.appVolumeDb);
+
+    if (ui.nearModeBtn) ui.nearModeBtn.classList.toggle("is-active", modeKey === "near");
+    if (ui.farModeBtn) ui.farModeBtn.classList.toggle("is-active", modeKey === "far");
+    if (ui.rumbleModeBtn) ui.rumbleModeBtn.classList.toggle("is-active", modeKey === "rumble");
+    if (ui.humModeBtn) ui.humModeBtn.classList.toggle("is-active", modeKey === "hum");
+    if (ui.humSoftModeBtn) ui.humSoftModeBtn.classList.toggle("is-active", modeKey === "humSoft");
+    if (ui.editNearBtn) ui.editNearBtn.classList.toggle("is-active", state.editingPresetKey === "near");
+    if (ui.editFarBtn) ui.editFarBtn.classList.toggle("is-active", state.editingPresetKey === "far");
+    if (ui.editRumbleBtn) ui.editRumbleBtn.classList.toggle("is-active", state.editingPresetKey === "rumble");
+    if (ui.editHumBtn) ui.editHumBtn.classList.toggle("is-active", state.editingPresetKey === "hum");
+    if (ui.editHumSoftBtn) ui.editHumSoftBtn.classList.toggle("is-active", state.editingPresetKey === "humSoft");
+    if (ui.distanceCard) ui.distanceCard.classList.toggle("is-active", true);
+    if (ui.volumeCard) ui.volumeCard.classList.toggle("is-active", state.appVolumeDb !== 0);
+
+  }
+
+  function createAudioContextIfNeeded() {
+    if (!state.audioCtx) {
+      state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      state.masterGain = state.audioCtx.createGain();
+      state.tonalBedGain = state.audioCtx.createGain();
+      state.noiseBedGain = state.audioCtx.createGain();
+      state.motorGain = state.audioCtx.createGain();
+      state.airGain = state.audioCtx.createGain();
+      state.harmonicNoiseGain = state.audioCtx.createGain();
+      state.lowRumbleGain = state.audioCtx.createGain();
+      state.humGain = state.audioCtx.createGain();
+      state.velvetLowGain = state.audioCtx.createGain();
+      state.velvetHighGain = state.audioCtx.createGain();
+      state.motorPanner = state.audioCtx.createStereoPanner();
+      state.airPannerA = state.audioCtx.createStereoPanner();
+      state.airPannerB = state.audioCtx.createStereoPanner();
+      state.harmonicNoisePanner = state.audioCtx.createStereoPanner();
+      state.lowRumblePanner = state.audioCtx.createStereoPanner();
+      state.humPanner = state.audioCtx.createStereoPanner();
+      state.lowRumbleFilter = state.audioCtx.createBiquadFilter();
+      state.lowRumbleFilter.type = "bandpass";
+      state.lowRumbleFilter.frequency.value = 45;
+      state.lowRumbleFilter.Q.value = 1.15;
+      state.velvetLowPanner = state.audioCtx.createStereoPanner();
+      state.velvetHighPanner = state.audioCtx.createStereoPanner();
+
+      // Tonal bed: one active pitched source at a time.
+      // Keeping source crossfade and scene strength on separate gains avoids abrupt jumps.
+      state.motorPanner.connect(state.motorGain);
+      state.humPanner.connect(state.humGain);
+      state.motorGain.connect(state.tonalBedGain);
+      state.humGain.connect(state.tonalBedGain);
+
+      // Noise bed: non-tonal masking and body layers stay shared under all modes.
+      state.airPannerA.connect(state.airGain);
+      state.airPannerB.connect(state.airGain);
+      state.harmonicNoisePanner.connect(state.harmonicNoiseGain);
+      state.lowRumbleFilter.connect(state.lowRumblePanner);
+      state.lowRumblePanner.connect(state.lowRumbleGain);
+      state.velvetLowPanner.connect(state.velvetLowGain);
+      state.velvetHighPanner.connect(state.velvetHighGain);
+      state.airGain.connect(state.noiseBedGain);
+      state.harmonicNoiseGain.connect(state.noiseBedGain);
+      state.lowRumbleGain.connect(state.noiseBedGain);
+      state.velvetLowGain.connect(state.noiseBedGain);
+      state.velvetHighGain.connect(state.noiseBedGain);
+
+      state.tonalBedGain.connect(state.masterGain);
+      state.noiseBedGain.connect(state.masterGain);
+      state.masterGain.connect(state.audioCtx.destination);
+
+      state.masterGain.gain.value = 0;
+      state.tonalBedGain.gain.value = 0;
+      state.noiseBedGain.gain.value = 1;
+      state.motorGain.gain.value = 0;
+      state.humGain.gain.value = 0;
+      state.airGain.gain.value = 0;
+      state.harmonicNoiseGain.gain.value = 0;
+      state.lowRumbleGain.gain.value = 0;
+      state.velvetLowGain.gain.value = 0;
+      state.velvetHighGain.gain.value = 0;
+    }
+    return state.audioCtx;
+  }
+
+  async function decodeArrayBuffer(arrayBuffer) {
+    const audioCtx = createAudioContextIfNeeded();
+    return await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+  }
+
+
+  async function fetchSampleArrayBufferWithFallback() {
+    try {
+      setStatus(`Loading ${DEFAULT_SAMPLE_URL}...`);
+      const response = await fetch(DEFAULT_SAMPLE_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return { arrayBuffer: await response.arrayBuffer(), source: "external" };
+    } catch (externalError) {
+      console.warn("External sample load failed; trying embedded placeholder.", externalError);
+      if (!EMBEDDED_SAMPLE_DATA_URL || !EMBEDDED_SAMPLE_DATA_URL.startsWith("data:audio/")) {
+        throw externalError;
+      }
+      setStatus("Loading embedded backup sample...");
+      const response = await fetch(EMBEDDED_SAMPLE_DATA_URL);
+      return { arrayBuffer: await response.arrayBuffer(), source: "embedded" };
+    }
+  }
+
+  async function loadDefaultSample() {
+    if (state.rawSampleBuffer || state.isLoadingSample) return state.rawSampleBuffer;
+    state.isLoadingSample = true;
+    try {
+      const sampleLoad = await fetchSampleArrayBufferWithFallback();
+      state.rawSampleBuffer = await decodeArrayBuffer(sampleLoad.arrayBuffer);
+      preprocessMotorLoopFromCurrentSettings();
+      setStatus(sampleLoad.source === "embedded" ? "Embedded backup sample loaded and preprocessed. Ready." : "Vacuum sample loaded and preprocessed. Ready.");
+      updateDebugView();
+      return state.rawSampleBuffer;
+    } catch (err) {
+      // A 404 here usually means the /assets folder is missing next to the HTML file.
+      // Keep the app usable for Hum mode if assets/hum.wav exists.
+      console.warn("Vacuum sample could not be loaded from assets/vacuum-loop.wav", err);
+      setStatus("Vacuum sample missing. Check assets/vacuum-loop.wav, or use Hum if assets/hum.wav exists.");
+      return null;
+    } finally {
+      state.isLoadingSample = false;
+    }
+  }
+
+
+
+  async function loadHumSample() {
+    if (state.rawHumBuffer || state.isLoadingHumSample) return state.rawHumBuffer;
+    state.isLoadingHumSample = true;
+    try {
+      const response = await fetch(DEFAULT_HUM_SAMPLE_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      state.rawHumBuffer = await decodeArrayBuffer(await response.arrayBuffer());
+      // Hum uses the same wrap-crossfade method as the motor layer.
+      // The recording may already fade in and out naturally.
+      const result = preprocessMotorLoop(state.rawHumBuffer, state.controls.motorPreprocessMs);
+      state.processedHumBuffer = result.buffer;
+      return state.rawHumBuffer;
+    } catch (err) {
+      console.warn("Optional hum sample could not be loaded from assets/hum.wav", err);
+      return null;
+    } finally {
+      state.isLoadingHumSample = false;
+      updateDebugView();
+    }
+  }
+
+  function preprocessMotorLoop(rawBuffer, crossfadeMs) {
+    const ctx = createAudioContextIfNeeded();
+    const requestedFadeSamples = Math.round(rawBuffer.sampleRate * Math.max(0, crossfadeMs) / 1000);
+    const maxFadeSamples = Math.floor(rawBuffer.length * 0.45);
+    const fadeSamples = Math.max(0, Math.min(requestedFadeSamples, maxFadeSamples));
+
+    if (fadeSamples < 2) {
+      const copy = ctx.createBuffer(rawBuffer.numberOfChannels, rawBuffer.length, rawBuffer.sampleRate);
+      for (let ch = 0; ch < rawBuffer.numberOfChannels; ch++) {
+        copy.copyToChannel(rawBuffer.getChannelData(ch), ch, 0);
+      }
+      return {
+        buffer: copy,
+        info: {
+          requestedMs: crossfadeMs,
+          actualMs: 0,
+          fadeSamples: 0,
+          rawLengthSamples: rawBuffer.length,
+          processedLengthSamples: copy.length,
+          method: "copy-no-crossfade"
+        }
+      };
+    }
+
+    // Standard cyclic wrap-crossfade:
+    // Output length becomes N - F. At native-loop wrap, the first samples continue
+    // from the original tail and then fade into the original head. This avoids a
+    // zero-window amplitude dip and keeps runtime playback to one looping source.
+    const processedLength = rawBuffer.length - fadeSamples;
+    const processed = ctx.createBuffer(rawBuffer.numberOfChannels, processedLength, rawBuffer.sampleRate);
+
+    for (let ch = 0; ch < rawBuffer.numberOfChannels; ch++) {
+      const src = rawBuffer.getChannelData(ch);
+      const dst = processed.getChannelData(ch);
+
+      for (let i = 0; i < processedLength; i++) {
+        dst[i] = src[i] || 0;
+      }
+
+      for (let i = 0; i < fadeSamples; i++) {
+        const t = i / Math.max(1, fadeSamples - 1);
+        const fadeIn = Math.sin(t * Math.PI * 0.5);
+        const fadeOut = Math.cos(t * Math.PI * 0.5);
+        const head = src[i] || 0;
+        const tail = src[processedLength + i] || 0;
+        dst[i] = tail * fadeOut + head * fadeIn;
+      }
+    }
+
+    return {
+      buffer: processed,
+      info: {
+        requestedMs: crossfadeMs,
+        actualMs: fadeSamples / rawBuffer.sampleRate * 1000,
+        fadeSamples,
+        rawLengthSamples: rawBuffer.length,
+        processedLengthSamples: processed.length,
+        method: "wrap-crossfade-at-loop-start"
+      }
+    };
+  }
+
+  function preprocessMotorLoopFromCurrentSettings() {
+    if (!state.rawSampleBuffer) return false;
+    const result = preprocessMotorLoop(state.rawSampleBuffer, state.controls.motorPreprocessMs);
+    state.processedMotorBuffer = result.buffer;
+    state.lastProcessInfo = result.info;
+    if (state.rawHumBuffer) {
+      const humResult = preprocessMotorLoop(state.rawHumBuffer, state.controls.motorPreprocessMs);
+      state.processedHumBuffer = humResult.buffer;
+      if (state.isRunning) restartHumSource();
+    }
+    if (state.isRunning) restartMotorSource();
+    updateDebugView();
+    return true;
+  }
+
+  function createNoiseBuffer(audioCtx, seconds, highpassHint) {
+    const length = Math.max(1, Math.floor(audioCtx.sampleRate * seconds));
+    const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let previous = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      previous = previous * 0.92 + white * 0.08;
+      data[i] = highpassHint ? ((white - previous) * 0.03 + previous * 0.32) : previous * 0.50;
+    }
+    return buffer;
+  }
+
+  function createLowRumbleBuffer(audioCtx, seconds = 4.0) {
+    const length = Math.max(1, Math.floor(audioCtx.sampleRate * seconds));
+    const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let brown = 0;
+    let slow = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      brown = Math.max(-1, Math.min(1, brown + white * 0.018));
+      brown *= 0.995;
+      slow = slow * 0.9992 + brown * 0.0008;
+      data[i] = (brown - slow) * 0.42;
+    }
+
+    // Normalize the generated low-frequency bed before the dedicated low-rumble gain.
+    // This makes the 30-60 Hz layer audible enough for tuning while the UI gain still
+    // controls the final level.
+    let sumSquares = 0;
+    for (let i = 0; i < length; i++) sumSquares += data[i] * data[i];
+    const rms = Math.sqrt(sumSquares / Math.max(1, length));
+    const targetRms = 0.18;
+    if (rms > 1e-9) {
+      const scale = targetRms / rms;
+      for (let i = 0; i < length; i++) data[i] = Math.max(-1, Math.min(1, data[i] * scale));
+    }
+    return buffer;
+  }
+
+  function createVelvetNoiseBuffer(audioCtx, seconds, impulsesPerSecond, tone) {
+    const length = Math.max(1, Math.floor(audioCtx.sampleRate * seconds));
+    const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    const impulseCount = Math.max(1, Math.floor(seconds * impulsesPerSecond));
+
+    for (let n = 0; n < impulseCount; n++) {
+      const index = Math.floor(Math.random() * length);
+      const sign = Math.random() < 0.5 ? -1 : 1;
+      const grainSamples = tone === "low" ? 220 : 110;
+      const decay = tone === "low" ? 110 : 55;
+      const amp = tone === "low" ? 0.34 : 0.20;
+      for (let k = 0; k < grainSamples && index + k < length; k++) {
+        const t = k / Math.max(1, grainSamples - 1);
+        const env = Math.sin(t * Math.PI) * Math.exp(-k / decay);
+        data[index + k] += sign * env * amp;
+      }
+    }
+
+    let prev = 0;
+    for (let i = 0; i < length; i++) {
+      prev = prev * 0.88 + data[i] * 0.12;
+      data[i] = prev;
+    }
+
+    let sumSquares = 0;
+    for (let i = 0; i < length; i++) sumSquares += data[i] * data[i];
+    const rms = Math.sqrt(sumSquares / Math.max(1, length));
+    const targetRms = tone === "low" ? 0.10 : 0.07;
+    if (rms > 1e-9) {
+      const scale = targetRms / rms;
+      for (let i = 0; i < length; i++) data[i] = Math.max(-1, Math.min(1, data[i] * scale));
+    }
+    return buffer;
+  }
+
+  function createLoopingBufferSource(buffer, playbackRate = 1) {
+    const source = state.audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.playbackRate.value = playbackRate;
+    return source;
+  }
+
+  function stopSource(source) {
+    if (!source) return;
+    try { source.stop(); } catch (err) {}
+    try { source.disconnect(); } catch (err) {}
+  }
+
+  function refreshEffectiveLoadFromCurrentLfo() {
+    state.loadLfo.effectiveLoad = clampSigned01(
+      state.controls.load01 + state.controls.loadLfoDepth01 * state.loadLfo.value
+    );
+    return state.loadLfo.effectiveLoad;
+  }
+
+  function updateLoadLfoState(nowSec) {
+    const lfo = state.loadLfo;
+    if (lfo.lastTimeSec === null) {
+      lfo.lastTimeSec = nowSec;
+      refreshEffectiveLoadFromCurrentLfo();
+      return;
+    }
+    const dt = Math.max(0, Math.min(0.25, nowSec - lfo.lastTimeSec));
+    lfo.lastTimeSec = nowSec;
+    const periodMod01 = 0.5 + 0.5 * Math.sin(nowSec * 0.13);
+    lfo.currentPeriodSec = LOAD_LFO_MIN_PERIOD_SEC + periodMod01 * (LOAD_LFO_MAX_PERIOD_SEC - LOAD_LFO_MIN_PERIOD_SEC);
+    lfo.phase = (lfo.phase + dt / Math.max(0.001, lfo.currentPeriodSec)) % 1;
+    lfo.value = Math.sin(lfo.phase * Math.PI * 2);
+    state.stereoMotion.motorDrift = Math.sin(nowSec * 0.17) * 0.70 + Math.sin(nowSec * 0.041) * 0.30;
+    state.stereoMotion.velvetLowDrift = Math.sin(nowSec * 0.23 + 1.7);
+    state.stereoMotion.velvetHighDrift = Math.sin(nowSec * 0.37 + 0.4) * 0.65 + Math.sin(nowSec * 0.11 + 2.2) * 0.35;
+    refreshEffectiveLoadFromCurrentLfo();
+  }
+
+  function getLoadForMapping() { return refreshEffectiveLoadFromCurrentLfo(); }
+
+  function computeMappedControls() {
+    const load = getLoadForMapping();
+    const loadUp = Math.max(0, load);
+    const loadDown = Math.max(0, -load);
+    const playbackRate = 1.0 + load * 0.50;
+    const motorLoadGain = dbToGain(loadUp * 3.0);
+    const airLoadGain = dbToGain(-12.0 + loadUp * -6.0 + loadDown * -2.0);
+    const harmonicLoadGain = dbToGain(-4 + loadUp * 8 - loadDown * 2);
+    const velvetLowLoadGain = dbToGain(-4 - loadUp * 1 + loadDown * 1);
+    const velvetHighLoadGain = dbToGain(-7 + loadUp * 4 - loadDown * 2);
+    const lowRumbleLoadGain = dbToGain(2 - loadUp * 2 + loadDown * 5);
+
+    const width = state.controls.monoCheck ? 0 : state.controls.stereoWidth01;
+    const motorPan = state.controls.monoCheck ? 0 : clamp(
+      state.controls.motorPan01 * 0.75 + state.stereoMotion.motorDrift * 0.08 * state.controls.motorPanDrift01,
+      -0.85,
+      0.85
+    );
+    const velvetLowPan = state.stereoMotion.velvetLowDrift * 0.30 * width * state.controls.velvetMotion01;
+    const velvetHighPan = state.stereoMotion.velvetHighDrift * 0.75 * width * state.controls.velvetMotion01;
+
+    return {
+      playbackRate,
+      tonalBedGain: state.controls.motorVolume01 * motorLoadGain,
+      noiseBedGain: 1.0,
+      airGain: state.controls.airVolume01 * airLoadGain,
+      harmonicNoiseGain: state.controls.harmonicNoise01 * harmonicLoadGain,
+      lowRumbleGain: state.controls.lowRumble01 * lowRumbleLoadGain,
+      lowRumbleFrequency: 42 + loadDown * 10 - loadUp * 4,
+      velvetLowGain: state.controls.velvetLow01 * velvetLowLoadGain,
+      velvetHighGain: state.controls.velvetHigh01 * velvetHighLoadGain,
+      masterGain: state.controls.masterVolume01,
+      stereo: {
+        width,
+        motorPan,
+        airPanA: -0.65 * width,
+        airPanB: 0.65 * width,
+        harmonicNoisePan: 0.12 * width * state.stereoMotion.motorDrift,
+        lowRumblePan: 0.04 * width * state.stereoMotion.motorDrift,
+        velvetLowPan,
+        velvetHighPan
+      }
+    };
+  }
+
+  function getTonalWeights(nowSec) {
+    const currentModeKey = state.modeKey || "far";
+    let motorWeight = currentModeKey === "hum" ? 0 : 1;
+    let humWeight = currentModeKey === "hum" ? 1 : 0;
+
+    if (!state.tonalTransition) return { motorWeight, humWeight };
+
+    const transition = state.tonalTransition;
+    const rawT = (nowSec - transition.startTimeSec) / Math.max(0.001, transition.durationSec);
+    const t = clamp01(rawT);
+    const eased = t * t * (3 - 2 * t);
+
+    const fromMotor = transition.fromModeKey === "hum" ? 0 : 1;
+    const fromHum = transition.fromModeKey === "hum" ? 1 : 0;
+    const toMotor = transition.toModeKey === "hum" ? 0 : 1;
+    const toHum = transition.toModeKey === "hum" ? 1 : 0;
+
+    motorWeight = fromMotor * (1 - eased) + toMotor * eased;
+    humWeight = fromHum * (1 - eased) + toHum * eased;
+
+    if (rawT >= 1) state.tonalTransition = null;
+    return { motorWeight, humWeight };
+  }
+
+  function applyControls(rampSeconds = 0.08) {
+    if (!state.audioCtx || !state.masterGain) return;
+    const now = state.audioCtx.currentTime;
+    const mapped = computeMappedControls();
+
+    if (state.motorSource) {
+      state.motorSource.playbackRate.setTargetAtTime(mapped.playbackRate, now, rampSeconds);
+    }
+    if (state.humSource) {
+      state.humSource.playbackRate.setTargetAtTime(mapped.playbackRate, now, rampSeconds);
+    }
+
+    if (state.motorPanner) state.motorPanner.pan.setTargetAtTime(mapped.stereo.motorPan, now, rampSeconds);
+    if (state.airPannerA) state.airPannerA.pan.setTargetAtTime(mapped.stereo.airPanA, now, rampSeconds);
+    if (state.airPannerB) state.airPannerB.pan.setTargetAtTime(mapped.stereo.airPanB, now, rampSeconds);
+    if (state.harmonicNoisePanner) state.harmonicNoisePanner.pan.setTargetAtTime(mapped.stereo.harmonicNoisePan, now, rampSeconds);
+    if (state.lowRumblePanner) state.lowRumblePanner.pan.setTargetAtTime(mapped.stereo.lowRumblePan, now, rampSeconds);
+    if (state.lowRumbleFilter) state.lowRumbleFilter.frequency.setTargetAtTime(mapped.lowRumbleFrequency, now, Math.max(0.12, rampSeconds));
+    if (state.velvetLowPanner) state.velvetLowPanner.pan.setTargetAtTime(mapped.stereo.velvetLowPan, now, rampSeconds);
+    if (state.velvetHighPanner) state.velvetHighPanner.pan.setTargetAtTime(mapped.stereo.velvetHighPan, now, rampSeconds);
+
+    // Source gains are used only for tonal crossfade. Scene strength is applied
+    // on tonalBedGain below, so Near/Far/Hum changes do not overwrite the xfade.
+    const tonalWeights = getTonalWeights(now);
+    const tonalRampSeconds = state.tonalTransition ? 0.10 : Math.min(rampSeconds, 0.35);
+    state.motorGain.gain.setTargetAtTime(tonalWeights.motorWeight, now, tonalRampSeconds);
+    if (state.humGain) state.humGain.gain.setTargetAtTime(HUM_GAIN_BOOST * tonalWeights.humWeight, now, tonalRampSeconds);
+
+    if (state.tonalBedGain) state.tonalBedGain.gain.setTargetAtTime(mapped.tonalBedGain, now, rampSeconds);
+    if (state.noiseBedGain) state.noiseBedGain.gain.setTargetAtTime(mapped.noiseBedGain, now, rampSeconds);
+    state.airGain.gain.setTargetAtTime(mapped.airGain, now, rampSeconds);
+    state.harmonicNoiseGain.gain.setTargetAtTime(mapped.harmonicNoiseGain, now, rampSeconds);
+    state.lowRumbleGain.gain.setTargetAtTime(mapped.lowRumbleGain, now, rampSeconds);
+    state.velvetLowGain.gain.setTargetAtTime(mapped.velvetLowGain, now, rampSeconds);
+    state.velvetHighGain.gain.setTargetAtTime(mapped.velvetHighGain, now, rampSeconds);
+    state.masterGain.gain.setTargetAtTime(mapped.masterGain, now, rampSeconds);
+    updateDebugView();
+  }
+
+  function startMotorSource() {
+    if (!state.audioCtx || !state.processedMotorBuffer) return false;
+    const mapped = computeMappedControls();
+    const source = createLoopingBufferSource(state.processedMotorBuffer, mapped.playbackRate);
+    source.connect(state.motorPanner);
+    source.start(state.audioCtx.currentTime + 0.02);
+    state.motorSource = source;
+    return true;
+  }
+
+  function startHumSource() {
+    if (!state.audioCtx || !state.processedHumBuffer) return false;
+    const source = createLoopingBufferSource(state.processedHumBuffer, 1);
+    source.connect(state.humPanner);
+    source.start(state.audioCtx.currentTime + 0.02);
+    state.humSource = source;
+    return true;
+  }
+
+  function restartHumSource() {
+    if (!state.audioCtx || !state.isRunning || !state.processedHumBuffer) return false;
+    const oldSource = state.humSource;
+    startHumSource();
+    if (oldSource) {
+      try { oldSource.stop(state.audioCtx.currentTime + 0.04); } catch (err) {}
+      setTimeout(() => stopSource(oldSource), 90);
+    }
+    applyControls(0.04);
+    return true;
+  }
+
+  function restartMotorSource() {
+    if (!state.audioCtx || !state.isRunning || !state.processedMotorBuffer) return false;
+    const oldSource = state.motorSource;
+    startMotorSource();
+    if (oldSource) {
+      try { oldSource.stop(state.audioCtx.currentTime + 0.04); } catch (err) {}
+      setTimeout(() => stopSource(oldSource), 90);
+    }
+    applyControls(0.04);
+    return true;
+  }
+
+  function startLoadLfoUpdater() {
+    if (state.loadLfoTimer) return;
+    if (state.audioCtx) state.loadLfo.lastTimeSec = state.audioCtx.currentTime;
+    state.loadLfoTimer = setInterval(() => {
+      if (!state.audioCtx || !state.isRunning) return;
+      updateLoadLfoState(state.audioCtx.currentTime);
+      applyControls(getActiveRampSeconds());
+    }, 50);
+  }
+
+  function stopLoadLfoUpdater() {
+    clearInterval(state.loadLfoTimer);
+    state.loadLfoTimer = null;
+    state.loadLfo.lastTimeSec = null;
+  }
+
+  async function requestWakeLock() {
+    if (!("wakeLock" in navigator)) {
+      setWakeLockStatus("unavailable");
+      return false;
+    }
+    if (state.wakeLock) {
+      setWakeLockStatus("active");
+      return true;
+    }
+
+    try {
+      state.wakeLock = await navigator.wakeLock.request("screen");
+      setWakeLockStatus("active");
+      state.wakeLock.addEventListener("release", () => {
+        state.wakeLock = null;
+        setWakeLockStatus("released");
+      });
+      return true;
+    } catch (error) {
+      console.warn("Wake Lock request failed", error);
+      setWakeLockStatus(error && error.name ? `failed: ${error.name}` : "failed");
+      return false;
+    }
+  }
+
+  async function releaseWakeLock() {
+    if (!state.wakeLock) return;
+    try {
+      await state.wakeLock.release();
+    } catch (error) {
+      console.warn("Wake Lock release failed", error);
+    } finally {
+      state.wakeLock = null;
+      setWakeLockStatus("released");
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && state.isRunning) {
+      requestWakeLock();
+    }
+  });
+
+  async function startAudio() {
+    const audioCtx = createAudioContextIfNeeded();
+    await audioCtx.resume();
+
+    // Lazy-load only the tonal sample needed for the selected user mode.
+    // This avoids a startup 404 for vacuum-loop.wav when testing Hum-only builds.
+    if (state.modeKey === "hum") {
+      await loadHumSample();
+      if (!state.processedHumBuffer) {
+        setStatus("No processed hum buffer. Check assets/hum.wav.");
+        return false;
+      }
+    } else {
+      await loadDefaultSample();
+      if (!state.processedMotorBuffer) {
+        setStatus("No processed motor buffer. Check assets/vacuum-loop.wav or embedded placeholder.");
+        return false;
+      }
+    }
+    if (state.isRunning) return true;
+
+    updateLoadLfoState(audioCtx.currentTime);
+    state.airSourceA = createLoopingBufferSource(createNoiseBuffer(audioCtx, 2.3, false), 1);
+    state.airSourceB = createLoopingBufferSource(createNoiseBuffer(audioCtx, 3.1, true), 1);
+    state.harmonicNoiseSource = createLoopingBufferSource(createNoiseBuffer(audioCtx, 1.7, true), 1);
+    state.lowRumbleSource = createLoopingBufferSource(createLowRumbleBuffer(audioCtx, 4.3), 1);
+    state.velvetLowSource = createLoopingBufferSource(createVelvetNoiseBuffer(audioCtx, 4.7, 1200, "low"), 1);
+    state.velvetHighSource = createLoopingBufferSource(createVelvetNoiseBuffer(audioCtx, 3.9, 1800, "high"), 1);
+
+    state.airSourceA.connect(state.airPannerA);
+    state.airSourceB.connect(state.airPannerB);
+    state.harmonicNoiseSource.connect(state.harmonicNoisePanner);
+    state.lowRumbleSource.connect(state.lowRumbleFilter);
+    state.velvetLowSource.connect(state.velvetLowPanner);
+    state.velvetHighSource.connect(state.velvetHighPanner);
+
+    const now = audioCtx.currentTime;
+    state.masterGain.gain.cancelScheduledValues(now);
+    state.masterGain.gain.setValueAtTime(0, now);
+
+    if (state.processedMotorBuffer) startMotorSource();
+    if (state.processedHumBuffer) startHumSource();
+    state.airSourceA.start(now);
+    state.airSourceB.start(now);
+    state.harmonicNoiseSource.start(now);
+    state.lowRumbleSource.start(now);
+    state.velvetLowSource.start(now);
+    state.velvetHighSource.start(now);
+
+    state.isRunning = true;
+    await requestWakeLock();
+    beginCalmTransition(START_STOP_TRANSITION_SEC);
+    applyControls(START_STOP_TRANSITION_SEC);
+    startLoadLfoUpdater();
+    setStatus("Running. Vacuum or Hum uses one active tonal loop at a time.");
+    updateTransportUi();
+    return true;
+  }
+
+  function stopAudio() {
+    if (!state.audioCtx || !state.isRunning) return false;
+    stopLoadLfoUpdater();
+    releaseWakeLock();
+    const now = state.audioCtx.currentTime;
+    const stopAt = now + STOP_FADE_SEC;
+    state.masterGain.gain.cancelScheduledValues(now);
+    state.masterGain.gain.setValueAtTime(state.masterGain.gain.value, now);
+    state.masterGain.gain.linearRampToValueAtTime(0.0001, stopAt);
+
+    const sources = [
+      state.motorSource,
+      state.humSource,
+      state.airSourceA,
+      state.airSourceB,
+      state.harmonicNoiseSource,
+      state.lowRumbleSource,
+      state.velvetLowSource,
+      state.velvetHighSource
+    ];
+
+    setTimeout(() => {
+      sources.forEach(stopSource);
+      state.motorSource = null;
+      state.humSource = null;
+      state.airSourceA = null;
+      state.airSourceB = null;
+      state.harmonicNoiseSource = null;
+      state.lowRumbleSource = null;
+      state.velvetLowSource = null;
+      state.velvetHighSource = null;
+      state.isRunning = false;
+      setStatus("Stopped.");
+      updateTransportUi();
+      updateDebugView();
+    }, STOP_FADE_SEC * 1000 + 120);
+    return true;
+  }
+
+  function updateControl(params = {}, rampSeconds = 0.08) {
+    if (typeof params.loadSigned01 === "number") state.controls.load01 = clampSigned01(params.loadSigned01);
+    else if (typeof params.load01 === "number") state.controls.load01 = clampSigned01(params.load01 * 2 - 1);
+
+    if (typeof params.loadLfoDepth01 === "number") state.controls.loadLfoDepth01 = clamp(params.loadLfoDepth01, 0, 0.30);
+    if (typeof params.motorVolume01 === "number") state.controls.motorVolume01 = clamp(params.motorVolume01, 0, 1.5);
+    if (typeof params.motorPreprocessMs === "number") state.controls.motorPreprocessMs = clamp(params.motorPreprocessMs, 0, 300);
+    if (typeof params.airVolume01 === "number") state.controls.airVolume01 = clamp01(params.airVolume01);
+    if (typeof params.velvetLow01 === "number") state.controls.velvetLow01 = clamp01(params.velvetLow01);
+    if (typeof params.velvetHigh01 === "number") state.controls.velvetHigh01 = clamp01(params.velvetHigh01);
+    if (typeof params.harmonicNoise01 === "number") state.controls.harmonicNoise01 = clamp01(params.harmonicNoise01);
+    if (typeof params.lowRumble01 === "number") state.controls.lowRumble01 = clamp(params.lowRumble01, 0, 1.5);
+    if (typeof params.stereoWidth01 === "number") state.controls.stereoWidth01 = clamp01(params.stereoWidth01);
+    if (typeof params.motorPan01 === "number") state.controls.motorPan01 = clampSigned01(params.motorPan01);
+    if (typeof params.motorPanDrift01 === "number") state.controls.motorPanDrift01 = clamp01(params.motorPanDrift01);
+    if (typeof params.velvetMotion01 === "number") state.controls.velvetMotion01 = clamp01(params.velvetMotion01);
+    if (typeof params.monoCheck === "number") state.controls.monoCheck = params.monoCheck >= 0.5;
+    if (typeof params.monoCheck === "boolean") state.controls.monoCheck = params.monoCheck;
+    if (typeof params.masterVolume01 === "number") state.controls.masterVolume01 = clamp01(params.masterVolume01);
+
+    refreshEffectiveLoadFromCurrentLfo();
+    applyControls(rampSeconds);
+    syncUiFromState();
+    return getState();
+  }
+
+  async function start() { await startAudio(); return getState(); }
+  function stop() { stopAudio(); return getState(); }
+
+  function reprocessMotorLoop() {
+    const ok = preprocessMotorLoopFromCurrentSettings();
+    setStatus(ok ? `Reprocessed tonal loops: ${Math.round(state.lastProcessInfo.actualMs)} ms wrap-crossfade.` : "No sample to reprocess.");
+    syncUiFromState();
+    return getState();
+  }
+
+  function getState() {
+    const mapped = computeMappedControls();
+    return {
+      version: VERSION,
+      isRunning: state.isRunning,
+      hasSample: Boolean(state.rawSampleBuffer),
+      hasProcessedMotorBuffer: Boolean(state.processedMotorBuffer),
+      hasHumSample: Boolean(state.rawHumBuffer),
+      hasProcessedHumBuffer: Boolean(state.processedHumBuffer),
+      isLoadingSample: state.isLoadingSample,
+      wakeLock: {
+        supported: state.wakeLockSupported,
+        active: Boolean(state.wakeLock),
+        status: state.wakeLockStatus
+      },
+      transition: {
+        active: performance.now() < state.transitionUntilMs,
+        rampSeconds: getActiveRampSeconds(),
+        tonalCrossfadeSeconds: TONAL_CROSSFADE_SEC,
+        tonalTransition: state.tonalTransition
+      },
+      sample: state.rawSampleBuffer ? {
+        rawDurationSec: state.rawSampleBuffer.duration,
+        processedDurationSec: state.processedMotorBuffer ? state.processedMotorBuffer.duration : null,
+        sampleRate: state.rawSampleBuffer.sampleRate,
+        channels: state.rawSampleBuffer.numberOfChannels
+      } : null,
+      controls: { ...state.controls, loadSigned01: state.controls.load01 },
+      scenes: { modeKey: state.modeKey, distance01: state.distance01, appVolumeDb: state.appVolumeDb, editingPresetKey: state.editingPresetKey, weights: getDistanceWeights(), presets: state.scenePresets },
+      loadLfo: { ...state.loadLfo },
+      mapped,
+      motorLoop: {
+        activeVoices: (state.motorSource ? 1 : 0) + (state.humSource ? 1 : 0),
+        nativeLoopUsedForMotor: true,
+        humLoopAvailable: Boolean(state.processedHumBuffer),
+        processedLoop: true,
+        processInfo: state.lastProcessInfo
+      }
+    };
+  }
+
+  window.vacuumSampleLabApi = Object.freeze({
+    updateControl,
+    start,
+    stop,
+    getState,
+    reprocessMotorLoop
+  });
+
+  function syncUiFromState() {
+    const values = {
+      loadSigned01: state.controls.load01,
+      loadLfoDepth01: state.controls.loadLfoDepth01,
+      motorVolume01: state.controls.motorVolume01,
+      motorPreprocessMs: state.controls.motorPreprocessMs,
+      airVolume01: state.controls.airVolume01,
+      velvetLow01: state.controls.velvetLow01,
+      velvetHigh01: state.controls.velvetHigh01,
+      harmonicNoise01: state.controls.harmonicNoise01,
+      lowRumble01: state.controls.lowRumble01,
+      stereoWidth01: state.controls.stereoWidth01,
+      motorPan01: state.controls.motorPan01,
+      motorPanDrift01: state.controls.motorPanDrift01,
+      velvetMotion01: state.controls.velvetMotion01,
+      monoCheck: state.controls.monoCheck ? 1 : 0,
+      masterVolume01: state.controls.masterVolume01
+    };
+
+    controlKeys.forEach(key => {
+      const input = document.getElementById(key);
+      const output = document.getElementById(`${key}Out`);
+      if (input && document.activeElement !== input) input.value = String(values[key]);
+      if (output) {
+        if (key === "motorPreprocessMs") output.value = `${Math.round(values[key])} ms`;
+        else if (key === "monoCheck") output.value = state.controls.monoCheck ? "on" : "off";
+        else output.value = Number(values[key]).toFixed(2);
+      }
+    });
+  }
+
+  function updateTransportUi() {
+    if (!ui.startStopBtn) return;
+    ui.startStopBtn.textContent = state.isRunning ? "Stop" : "Start";
+    ui.startStopBtn.classList.toggle("primary", !state.isRunning);
+  }
+
+  function roundDebugValue(value) {
+    if (typeof value !== "number") return value;
+    if (!Number.isFinite(value)) return value;
+    return Math.abs(value) >= 100 ? Number(value.toFixed(1)) : Number(value.toFixed(3));
+  }
+
+  function makeDebugStateCompact(value) {
+    if (Array.isArray(value)) return value.map(makeDebugStateCompact);
+    if (value && typeof value === "object") {
+      const result = {};
+      Object.entries(value).forEach(([key, item]) => {
+        result[key] = makeDebugStateCompact(item);
+      });
+      return result;
+    }
+    return roundDebugValue(value);
+  }
+
+  function updateDebugView() {
+    if (!ui.debugView) return;
+    // Keep debug values compact so long floating point numbers do not cause
+    // the technical UI layout to jump or wrap unpredictably.
+    ui.debugView.textContent = JSON.stringify(makeDebugStateCompact(getState()), null, 2);
+  }
+
+  function bindUi() {
+    ui.startStopBtn.addEventListener("click", () => {
+      markTransition(ui.startStopBtn, START_STOP_TRANSITION_SEC);
+      beginCalmTransition(START_STOP_TRANSITION_SEC);
+      if (state.isRunning) {
+        setStatus("Stopping…");
+        stop();
+        return;
+      }
+      setStatus("Starting…");
+      start().catch(err => {
+        console.error(err);
+        setStatus(String(err && err.message ? err.message : err));
+      });
+    });
+    if (ui.technicalToggleBtn) ui.technicalToggleBtn.addEventListener("click", () => toggleTechnicalUi());
+    if (ui.nearModeBtn) ui.nearModeBtn.addEventListener("click", () => selectMode("near"));
+    if (ui.farModeBtn) ui.farModeBtn.addEventListener("click", () => selectMode("far"));
+    if (ui.rumbleModeBtn) ui.rumbleModeBtn.addEventListener("click", () => selectMode("rumble"));
+    if (ui.humModeBtn) ui.humModeBtn.addEventListener("click", () => selectMode("hum"));
+    if (ui.humSoftModeBtn) ui.humSoftModeBtn.addEventListener("click", () => selectMode("humSoft"));
+    if (ui.volumeDownBtn) ui.volumeDownBtn.addEventListener("click", () => setAppVolume(-APP_VOLUME_STEP_DB));
+    if (ui.volumeUpBtn) ui.volumeUpBtn.addEventListener("click", () => setAppVolume(APP_VOLUME_STEP_DB));
+    if (ui.editNearBtn) ui.editNearBtn.addEventListener("click", () => editPreset("near"));
+    if (ui.editFarBtn) ui.editFarBtn.addEventListener("click", () => editPreset("far"));
+    if (ui.editRumbleBtn) ui.editRumbleBtn.addEventListener("click", () => editPreset("rumble"));
+    if (ui.editHumBtn) ui.editHumBtn.addEventListener("click", () => editPreset("hum"));
+    if (ui.editHumSoftBtn) ui.editHumSoftBtn.addEventListener("click", () => editPreset("humSoft"));
+    if (ui.reprocessBtn) ui.reprocessBtn.addEventListener("click", () => reprocessMotorLoop());
+    if (ui.saveNearBtn) ui.saveNearBtn.addEventListener("click", () => saveCurrentToPreset("near"));
+    if (ui.saveFarBtn) ui.saveFarBtn.addEventListener("click", () => saveCurrentToPreset("far"));
+    if (ui.saveRumbleBtn) ui.saveRumbleBtn.addEventListener("click", () => saveCurrentToPreset("rumble"));
+    if (ui.saveHumBtn) ui.saveHumBtn.addEventListener("click", () => saveCurrentToPreset("hum"));
+    if (ui.saveHumSoftBtn) ui.saveHumSoftBtn.addEventListener("click", () => saveCurrentToPreset("humSoft"));
+    if (ui.resetPresetsBtn) ui.resetPresetsBtn.addEventListener("click", () => resetScenePresets());
+    ui.stateBtn.addEventListener("click", () => {
+      console.log("vacuumSampleLabApi.getState()", getState());
+      updateDebugView();
+    });
+    controlKeys.forEach(key => {
+      const input = document.getElementById(key);
+      if (!input) return;
+      input.addEventListener("input", () => {
+        const params = {};
+        params[key] = Number(input.value);
+        updateControl(params);
+      });
+    });
+  }
+
+  bindUi();
+  applySceneMode(0);
+  syncUiFromState();
+  updateTransportUi();
+  updateTechnicalUi();
+  updateSceneUi();
+  setWakeLockStatus(state.wakeLockSupported ? "available" : "unavailable");
+  updateDebugView();
+  // Do not preload audio files here. The selected tonal sample is loaded on Start,
+  // so Hum-only tests do not fail immediately when vacuum-loop.wav is absent.
+})();
+</script>
+</body>
+</html>
