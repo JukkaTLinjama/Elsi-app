@@ -1,0 +1,2425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Elsi Sleep Sound App v2.2</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #151513;
+      --panel: #22211f;
+      --text: #efe8da;
+      --muted: #b8ad9b;
+      --line: rgba(255,255,255,0.12);
+      --accent: #d8b66a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(216,182,106,0.11), transparent 34rem),
+        linear-gradient(180deg, #211f1c 0%, var(--bg) 62%, #10100e 100%);
+      color: var(--text);
+    }
+    main {
+      width: min(820px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 24px 16px 34px;
+      display: grid;
+      gap: 16px;
+    }
+    header { text-align: center; }
+    h1 { margin: 0; font-size: clamp(34px, 9vw, 58px); letter-spacing: 0.04em; font-weight: 650; }
+    .version { margin-top: 6px; color: var(--muted); font-size: 13px; }
+    .app-subtitle { margin-top: 6px; color: var(--muted); font-size: 13px; letter-spacing: 0.02em; }
+    section {
+      background: rgba(34,33,31,0.88);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 22px 70px rgba(0,0,0,0.28);
+      padding: 18px;
+    }
+    .transport { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    button {
+      min-height: 54px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #353128;
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+    }
+    button.primary { background: #5a4a2b; border-color: rgba(216,182,106,0.48); }
+    button:disabled { opacity: 0.38; cursor: default; }
+    button:active { transform: translateY(1px); filter: brightness(1.22); }
+    button.is-pressed { background: var(--accent); color: #171511; border-color: rgba(216,182,106,0.85); }
+    button.is-flashing { animation: buttonFlash 0.42s ease-out; }
+    @keyframes buttonFlash {
+      0% { filter: brightness(1.35); box-shadow: 0 0 0 rgba(216,182,106,0.0); }
+      45% { filter: brightness(1.55); box-shadow: 0 0 20px rgba(216,182,106,0.34); }
+      100% { filter: brightness(1.0); box-shadow: 0 0 0 rgba(216,182,106,0.0); }
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    label.control {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.035);
+    }
+    label.control span:first-child { font-size: 14px; }
+    output { color: var(--muted); min-width: 5.5em; text-align: right; font-variant-numeric: tabular-nums; }
+    input[type="range"] { grid-column: 1 / -1; width: 100%; }
+    .status { min-height: 22px; color: var(--muted); text-align: center; font-size: 14px; margin-top: 10px; }
+    pre {
+      margin: 0;
+      max-height: 340px;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #0c0c0b;
+      color: #d6d0c4;
+      font-size: 11px;
+      line-height: 1.35;
+      white-space: pre;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+    .note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; text-align: center; }
+    .user-note {
+      margin: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.035);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      text-align: center;
+    }
+    .user-note strong { color: var(--text); font-weight: 600; }
+    .app-footer {
+      justify-self: end;
+      color: rgba(184,173,155,0.30);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+      padding: 0 4px;
+    }
+
+    .scene-panel { display: grid; gap: 14px; text-align: center; }
+    .scene-title { margin: 0; font-size: 24px; font-weight: 620; }
+    .scene-description { margin: 0; color: var(--muted); line-height: 1.45; }
+    .scene-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .scene-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.035);
+      padding: 13px;
+      display: grid;
+      gap: 10px;
+      text-align: left;
+    }
+    .scene-card strong { font-size: 18px; }
+    .scene-card small { color: var(--muted); line-height: 1.35; }
+    .scene-level-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+    .scene-level-row button { min-height: 40px; border-radius: 13px; font-size: 20px; }
+    .mode-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .mode-row button {
+      --scene-level: 0;
+      --scene-pulse: 0;
+      --scene-wave: 0;
+      min-height: 48px;
+      border-radius: 14px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(216,182,106, calc(var(--scene-level, 0) * 0.84 + var(--scene-wave, 0) * 0.10 + var(--scene-pulse, 0) * 0.08)),
+          rgba(216,182,106, calc(var(--scene-level, 0) * 0.58 + var(--scene-wave, 0) * 0.08 + var(--scene-pulse, 0) * 0.06))
+        ),
+        #353128;
+      opacity: calc(0.62 + var(--scene-level, 0) * 0.30 + var(--scene-wave, 0) * 0.06 + var(--scene-pulse, 0) * 0.04);
+      filter: brightness(calc(0.88 + var(--scene-level, 0) * 0.20 + var(--scene-wave, 0) * 0.12 + var(--scene-pulse, 0) * 0.10));
+      border-color: rgba(255,255,255, calc(0.13 + var(--scene-level, 0) * 0.42 + var(--scene-wave, 0) * 0.16));
+      box-shadow:
+        0 0 calc(var(--scene-level, 0) * 10px + var(--scene-wave, 0) * 16px + var(--scene-pulse, 0) * 12px) rgba(216,182,106,0.18);
+      transition: opacity 180ms linear, filter 180ms linear, background 260ms ease, border-color 260ms ease, box-shadow 260ms ease, color 260ms ease;
+    }
+    
+    .mode-row button.is-active {
+      color: #171511;
+    }
+    button.is-transitioning { animation: transitionPulse 0.95s ease-in-out infinite alternate; }
+    @keyframes transitionPulse {
+      from { box-shadow: 0 0 0 rgba(216,182,106,0); }
+      to { box-shadow: 0 0 18px rgba(216,182,106,0.28); }
+    }
+    .scene-level-row output { min-width: 4.5em; text-align: center; }
+    .volume-card {
+      gap: 10px;
+      min-height: 210px;
+      overflow: hidden;
+      cursor: pointer;
+      touch-action: none;
+      transition: background 260ms ease, box-shadow 260ms ease, filter 220ms ease;
+    }
+    .volume-card.is-armed,
+    .volume-card.is-active {
+      background: rgba(255,255,255,0.075);
+      box-shadow:
+        inset 0 0 0 1px rgba(216,182,106,0.22),
+        0 0 28px rgba(216,182,106,0.14);
+      filter: brightness(1.12);
+    }
+    .volume-bar {
+      --actual-volume: 0;
+      --target-volume: 0;
+      --target-glow: 0;
+      position: relative;
+      min-height: 132px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      overflow: visible;
+      cursor: pointer;
+      touch-action: none;
+      transition: filter 220ms ease;
+      display: grid;
+      align-items: center;
+      padding: 0;
+    }
+    .volume-bar::before,
+    .volume-bar::after {
+      display: none;
+    }
+    .volume-bar.is-armed,
+    .volume-bar.is-active {
+      background: transparent;
+      filter: brightness(1.10);
+    }
+    .volume-segments {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      height: 132px;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .volume-segment {
+      fill: none;
+      stroke: rgba(239,232,218,0.075);
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 1;
+      transition: stroke 120ms ease, stroke-opacity 120ms ease, filter 180ms ease;
+    }
+    .volume-segment.is-target {
+      /* Target = saved user volume setting. It remains visible while stopped. */
+      stroke: rgba(216,182,106,0.62);
+      stroke-opacity: 1;
+      filter: drop-shadow(0 0 5px rgba(216,182,106,0.12));
+    }
+    .volume-segment.is-difference {
+      /* White is temporary activity only: the gap between actual and target. */
+      stroke: rgba(239,232,218,0.86);
+      stroke-opacity: 1;
+      filter: drop-shadow(0 0 7px rgba(239,232,218,0.13));
+    }
+    .volume-bar.is-armed .volume-segment.is-target,
+    .volume-bar.is-active .volume-segment.is-target {
+      stroke: rgba(216,182,106,0.78);
+    }
+    .volume-bar.is-armed .volume-segment.is-difference,
+    .volume-bar.is-active .volume-segment.is-difference {
+      stroke: rgba(239,232,218,0.94);
+    }
+    .volume-bar-hint {
+      margin: -2px 0 0;
+      color: rgba(184,173,155,0.72);
+      font-size: 11px;
+      text-align: center;
+      line-height: 1.25;
+      transition: opacity 180ms ease;
+    }
+    .technical-toggle { min-height: 30px; width: fit-content; justify-self: center; padding: 4px 10px; border-radius: 999px; color: var(--muted); font-size: 12px; opacity: 0.82; }
+    .technical-info { display: grid; gap: 6px; color: var(--muted); font-size: 13px; text-align: center; margin-bottom: 12px; }
+    .technical-section.is-hidden, .is-hidden { display: none; }
+    .preset-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+    .preset-actions button { min-height: 44px; border-radius: 14px; font-size: 14px; }
+    .control-groups { display: grid; gap: 14px; margin: 14px 0; }
+    .control-group {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.025);
+    }
+    .control-group-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .control-group-note {
+      margin: -6px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    @media (max-width: 620px) { .scene-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Elsi</h1>
+    <div class="app-subtitle">v2.2 · aligned volume arcs and loop fade-to-zero scene changes</div>
+  </header>
+
+  <section class="user-note" aria-label="User note">
+    <strong>Calm vacuum sound for sleep testing.</strong><br />
+    Start the sound, choose a Loop Source + Noise Bed scene, and adjust the volume gently. For overnight use, keep the screen awake or use Add to Home Screen so iOS does not pause the app. Happy sleep.
+  </section>
+
+  <section class="scene-panel" aria-label="Vacuum scenes">
+    <div class="transport">
+      <button id="startStopBtn" class="primary">Start</button>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card volume-card" id="volumeCard">
+        <strong>Volume</strong>
+        <div id="volumeBar" class="volume-bar" role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="75" tabindex="0">
+          <svg class="volume-segments" aria-hidden="true" viewBox="0 0 360 132" preserveAspectRatio="xMidYMid meet">
+            <path class="volume-segment" data-i="0" d="M 38 64 Q 46 66 38 68" />
+            <path class="volume-segment" data-i="1" d="M 73 63 Q 83 66 73 69" />
+            <path class="volume-segment" data-i="2" d="M 108 62 Q 121 66 108 70" />
+            <path class="volume-segment" data-i="3" d="M 143 59 Q 160 66 143 73" />
+            <path class="volume-segment" data-i="4" d="M 178 55 Q 200 66 178 77" />
+            <path class="volume-segment" data-i="5" d="M 213 50 Q 241 66 213 82" />
+            <path class="volume-segment" data-i="6" d="M 248 43 Q 283 66 248 89" />
+            <path class="volume-segment" data-i="7" d="M 283 34 Q 325 66 283 98" />
+            <path class="volume-segment" data-i="8" d="M 318 24 Q 364 66 318 108" />
+          </svg>
+        </div>
+        <p class="volume-bar-hint" id="volumeHint">Touch volume once to adjust</p>
+      </div>
+      <div class="scene-card" id="distanceCard">
+        <strong>Sound</strong>
+        <div class="mode-row sound-mode-grid">
+          <button id="nearModeBtn" type="button" aria-label="Select full vacuum sound">Vacuum</button>
+          <button id="humModeBtn" type="button" aria-label="Select full hum sound">Hum</button>
+          <button id="farModeBtn" type="button" aria-label="Select soft vacuum sound">Vacuum soft</button>
+          <button id="humSoftModeBtn" type="button" aria-label="Select soft hum sound">Hum soft</button>
+        </div>
+      </div>
+    </div>
+    <button id="technicalToggleBtn" class="technical-toggle" type="button">Tech</button>
+  </section>
+
+  <section id="technicalSection" class="technical-section is-hidden">
+    <div class="technical-info">
+      <div class="version">v2.2 · aligned volume arcs and loop fade-to-zero scene changes</div>
+      <div id="status" class="status">Ready. Uses asset loops when available, otherwise generates a soft vibro loop source in the browser.</div>
+      <div id="wakeLockStatus" class="status">Wake Lock: not requested</div>
+      <div class="note">If no asset loop is available, the browser generates a soft vibroacoustic loop source for testing.</div>
+      <div class="note">Loop Source and Noise Bed are routed separately. The loop source is one emotional anchor; the noise bed provides shared masking and body texture underneath.</div>
+    </div>
+    <div id="controlSection" class="control-groups" aria-label="Runtime test controls">
+      <div class="control-group" aria-label="Loop source controls">
+        <h2 class="control-group-title">Loop Source</h2>
+        <p class="control-group-note">One loop source at a time. Scene buttons apply different loop and noise-bed presets.</p>
+        <div class="control-grid">
+          <label class="control">
+            <span>Loop level</span>
+            <output id="motorVolume01Out">0.40</output>
+            <input id="motorVolume01" type="range" min="0" max="1.5" step="0.01" value="0.40" />
+          </label>
+
+          <label class="control">
+            <span>Load / pitch pull</span>
+            <output id="loadSigned01Out">0.00</output>
+            <input id="loadSigned01" type="range" min="-1" max="1" step="0.01" value="0" />
+          </label>
+
+          <label class="control">
+            <span>Slow load motion</span>
+            <output id="loadLfoDepth01Out">0.04</output>
+            <input id="loadLfoDepth01" type="range" min="0" max="0.30" step="0.01" value="0.04" />
+          </label>
+
+          <label class="control">
+            <span>Loop crossfade</span>
+            <output id="motorPreprocessMsOut">120 ms</output>
+            <input id="motorPreprocessMs" type="range" min="0" max="300" step="5" value="120" />
+          </label>
+
+          <label class="control">
+            <span>Loop pan</span>
+            <output id="motorPan01Out">0.00</output>
+            <input id="motorPan01" type="range" min="-1" max="1" step="0.01" value="0.00" />
+          </label>
+
+          <label class="control">
+            <span>Loop drift</span>
+            <output id="motorPanDrift01Out">0.25</output>
+            <input id="motorPanDrift01" type="range" min="0" max="1" step="0.01" value="0.25" />
+          </label>
+        </div>
+      </div>
+
+      <div class="control-group" aria-label="Noise bed controls">
+        <h2 class="control-group-title">Noise Bed</h2>
+        <p class="control-group-note">Shared noise masking layer under all sounds: air, texture, rumble, width, and output checks.</p>
+        <div class="control-grid">
+          <label class="control">
+            <span>Noise bed level</span>
+            <output id="noiseBedLevel01Out">1.00</output>
+            <input id="noiseBedLevel01" type="range" min="0" max="1.5" step="0.01" value="1.00" />
+          </label>
+
+          <label class="control">
+            <span>Air wash</span>
+            <output id="airVolume01Out">0.65</output>
+            <input id="airVolume01" type="range" min="0" max="1" step="0.01" value="0.65" />
+          </label>
+
+          <label class="control">
+            <span>Soft texture low</span>
+            <output id="velvetLow01Out">0.70</output>
+            <input id="velvetLow01" type="range" min="0" max="1" step="0.01" value="0.70" />
+          </label>
+
+          <label class="control">
+            <span>Soft texture high</span>
+            <output id="velvetHigh01Out">0.60</output>
+            <input id="velvetHigh01" type="range" min="0" max="1" step="0.01" value="0.60" />
+          </label>
+
+          <label class="control">
+            <span>Masking noise</span>
+            <output id="harmonicNoise01Out">0.75</output>
+            <input id="harmonicNoise01" type="range" min="0" max="1" step="0.01" value="0.75" />
+          </label>
+
+          <label class="control">
+            <span>Body rumble 30–60 Hz</span>
+            <output id="lowRumble01Out">0.00</output>
+            <input id="lowRumble01" type="range" min="0" max="1.5" step="0.01" value="0.00" />
+          </label>
+
+          <label class="control">
+            <span>Noise width</span>
+            <output id="stereoWidth01Out">0.60</output>
+            <input id="stereoWidth01" type="range" min="0" max="1" step="0.01" value="0.60" />
+          </label>
+
+          <label class="control">
+            <span>Texture motion</span>
+            <output id="velvetMotion01Out">0.50</output>
+            <input id="velvetMotion01" type="range" min="0" max="1" step="0.01" value="0.50" />
+          </label>
+
+          <label class="control">
+            <span>Mono check</span>
+            <output id="monoCheckOut">off</output>
+            <button id="monoCheckBtn" type="button">Mono off</button>
+          </label>
+
+          <label class="control">
+            <span>Master volume</span>
+            <output id="masterVolume01Out">0.70</output>
+            <input id="masterVolume01" type="range" min="0" max="1" step="0.01" value="0.70" />
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="preset-actions">
+      <button id="reprocessBtn" type="button">Reprocess loop</button>
+      <button id="stateBtn" type="button">Log state</button>
+      <button id="editNearBtn" type="button">Edit Vacuum endpoint</button>
+      <button id="editFarBtn" type="button">Edit Vacuum soft endpoint</button>
+      <button id="editRumbleBtn" type="button">Edit Rumble endpoint</button>
+      <button id="editHumBtn" type="button">Edit Hum endpoint</button>
+      <button id="editHumSoftBtn" type="button">Edit Hum soft endpoint</button>
+      <button id="saveNearBtn" type="button">Save to Vacuum</button>
+      <button id="saveFarBtn" type="button">Save to Vacuum soft</button>
+      <button id="saveRumbleBtn" type="button">Save to Rumble</button>
+      <button id="saveHumBtn" type="button">Save to Hum</button>
+      <button id="saveHumSoftBtn" type="button">Save to Hum soft</button>
+      <button id="resetPresetsBtn" type="button">Reset presets</button>
+    </div>
+  </section>
+
+  <section id="debugSection" class="technical-section is-hidden">
+    <pre id="debugView"></pre>
+  </section>
+
+  <footer class="app-footer">JukkaTLinjama 2026</footer>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const VERSION = "elsi-sleep-sound-app-v2.2";
+  const DEFAULT_LOOP_SOURCE_URL = "assets/vacuum-loop.wav";
+  const DEFAULT_HUM_LOOP_SOURCE_URL = "assets/hum.wav";
+  // Backward-compatible aliases while the old asset names are still used.
+  const DEFAULT_SAMPLE_URL = DEFAULT_LOOP_SOURCE_URL;
+  const DEFAULT_HUM_SAMPLE_URL = DEFAULT_HUM_LOOP_SOURCE_URL;
+  const SYNTHETIC_VIBRO_LOOP_SECONDS = 2.0;
+  // Embedded WAV loop placeholder. Paste a data URL here for standalone file:// fallback.
+  // Example: "data:audio/wav;base64,UklGR..."
+  const EMBEDDED_SAMPLE_DATA_URL = "";
+  // Optional embedded hum fallback. Keep empty to reuse EMBEDDED_SAMPLE_DATA_URL for Hum testing.
+  // This makes one-file HTML testing possible without an assets/ folder.
+  const EMBEDDED_HUM_SAMPLE_DATA_URL = "";
+
+  const LOAD_LFO_MIN_PERIOD_SEC = 3;
+  const LOAD_LFO_MAX_PERIOD_SEC = 8;
+
+  const ui = {
+    startStopBtn: document.getElementById("startStopBtn"),
+    technicalToggleBtn: document.getElementById("technicalToggleBtn"),
+    reprocessBtn: document.getElementById("reprocessBtn"),
+    stateBtn: document.getElementById("stateBtn"),
+    distanceCard: document.getElementById("distanceCard"),
+    volumeCard: document.getElementById("volumeCard"),
+    nearModeBtn: document.getElementById("nearModeBtn"),
+    farModeBtn: document.getElementById("farModeBtn"),
+    rumbleModeBtn: document.getElementById("rumbleModeBtn"),
+    humModeBtn: document.getElementById("humModeBtn"),
+    humSoftModeBtn: document.getElementById("humSoftModeBtn"),
+    volumeBar: document.getElementById("volumeBar"),
+    volumeHint: document.getElementById("volumeHint"),
+    volumeSegments: Array.from(document.querySelectorAll(".volume-segment")),
+    volumeOut: document.getElementById("volumeOut"),
+    monoCheckBtn: document.getElementById("monoCheckBtn"),
+    editNearBtn: document.getElementById("editNearBtn"),
+    editFarBtn: document.getElementById("editFarBtn"),
+    editRumbleBtn: document.getElementById("editRumbleBtn"),
+    sceneTitle: document.getElementById("sceneTitle"),
+    sceneDescription: document.getElementById("sceneDescription"),
+    technicalSection: document.getElementById("technicalSection"),
+    controlSection: document.getElementById("controlSection"),
+    debugSection: document.getElementById("debugSection"),
+    saveNearBtn: document.getElementById("saveNearBtn"),
+    saveFarBtn: document.getElementById("saveFarBtn"),
+    saveRumbleBtn: document.getElementById("saveRumbleBtn"),
+    editHumBtn: document.getElementById("editHumBtn"),
+    editHumSoftBtn: document.getElementById("editHumSoftBtn"),
+    saveHumBtn: document.getElementById("saveHumBtn"),
+    saveHumSoftBtn: document.getElementById("saveHumSoftBtn"),
+    resetPresetsBtn: document.getElementById("resetPresetsBtn"),
+    status: document.getElementById("status"),
+    wakeLockStatus: document.getElementById("wakeLockStatus"),
+    debugView: document.getElementById("debugView")
+  };
+
+  const controlKeys = [
+    "loadSigned01",
+    "loadLfoDepth01",
+    "motorVolume01",
+    "motorPreprocessMs",
+    "noiseBedLevel01",
+    "airVolume01",
+    "velvetLow01",
+    "velvetHigh01",
+    "harmonicNoise01",
+    "lowRumble01",
+    "stereoWidth01",
+    "motorPan01",
+    "motorPanDrift01",
+    "velvetMotion01",
+    "masterVolume01"
+  ];
+
+  // Legacy control keys still use the old motor* names internally.
+  // New loop* aliases are accepted by the API and shown in debug output,
+  // so the app can move toward Loop Source naming without breaking older tests.
+  const LOOP_CONTROL_ALIAS_TO_LEGACY = {
+    loopLevel01: "motorVolume01",
+    loopCrossfadeMs: "motorPreprocessMs",
+    loopPan01: "motorPan01",
+    loopDrift01: "motorPanDrift01",
+    loopPitchPull01: "loadSigned01",
+    loopMotionDepth01: "loadLfoDepth01"
+  };
+
+  const NOISE_CONTROL_ALIAS_TO_LEGACY = {
+    airWash01: "airVolume01",
+    softTextureLow01: "velvetLow01",
+    softTextureHigh01: "velvetHigh01",
+    maskingNoise01: "harmonicNoise01",
+    bodyRumble01: "lowRumble01",
+    noiseWidth01: "stereoWidth01",
+    textureMotion01: "velvetMotion01"
+  };
+
+  const LOOP_SOURCE_PRESET_KEYS = [
+    "loadSigned01",
+    "loadLfoDepth01",
+    "motorVolume01",
+    "motorPreprocessMs",
+    "motorPan01",
+    "motorPanDrift01",
+    "masterVolume01"
+  ];
+
+  const NOISE_BED_PRESET_KEYS = [
+    "noiseBedLevel01",
+    "airVolume01",
+    "velvetLow01",
+    "velvetHigh01",
+    "harmonicNoise01",
+    "lowRumble01",
+    "stereoWidth01",
+    "velvetMotion01",
+    "monoCheck"
+  ];
+
+  const APP_VOLUME_STEP_DB = 3;
+  const APP_VOLUME_MIN_DB = -36;
+  const APP_VOLUME_MAX_DB = 12;
+  const START_STOP_TRANSITION_SEC = 2.0;
+  const VOLUME_TRANSITION_SEC = 3.0;
+  const MODE_TRANSITION_SEC = 5.0;
+  const LOOP_FADE_OUT_SEC = 1.5;
+  const LOOP_FADE_IN_SEC = 1.5;
+  const LOOP_FADE_TO_ZERO_SEC = LOOP_FADE_OUT_SEC + LOOP_FADE_IN_SEC;
+  const TONAL_CROSSFADE_SEC = LOOP_FADE_TO_ZERO_SEC;
+  const HUM_GAIN_BOOST_DB = 12.0;
+  const HUM_GAIN_BOOST = dbToGain(HUM_GAIN_BOOST_DB);
+  const ONGOING_CONTROL_RAMP_SEC = 0.35;
+  const STOP_FADE_SEC = 2.0;
+
+  const DEFAULT_SCENE_PRESETS = {
+    vacuumFull: {
+      loadSigned01: 0.12,
+      loadLfoDepth01: 0.035,
+      motorVolume01: 0.62,
+      motorPreprocessMs: 120,
+      noiseBedLevel01: 1.00,
+      airVolume01: 0.34,
+      velvetLow01: 0.34,
+      velvetHigh01: 0.22,
+      harmonicNoise01: 0.60,
+      lowRumble01: 0.20,
+      stereoWidth01: 0.75,
+      motorPan01: 0.00,
+      motorPanDrift01: 0.35,
+      velvetMotion01: 0.70,
+      monoCheck: false,
+      masterVolume01: 0.64
+    },
+    vacuumSoft: {
+      loadSigned01: -0.08,
+      loadLfoDepth01: 0.018,
+      motorVolume01: 0.18,
+      motorPreprocessMs: 160,
+      noiseBedLevel01: 1.00,
+      airVolume01: 0.58,
+      velvetLow01: 0.54,
+      velvetHigh01: 0.34,
+      harmonicNoise01: 0.18,
+      lowRumble01: 1.00,
+      stereoWidth01: 1.00,
+      motorPan01: 0.00,
+      motorPanDrift01: 0.25,
+      velvetMotion01: 1.00,
+      monoCheck: false,
+      masterVolume01: 0.56
+    },
+    rumble: {
+      loadSigned01: -0.14,
+      loadLfoDepth01: 0.012,
+      motorVolume01: 0.12,
+      motorPreprocessMs: 180,
+      noiseBedLevel01: 1.00,
+      airVolume01: 0.54,
+      velvetLow01: 0.62,
+      velvetHigh01: 0.25,
+      harmonicNoise01: 0.10,
+      lowRumble01: 1.50,
+      stereoWidth01: 1.00,
+      motorPan01: 0.00,
+      motorPanDrift01: 0.18,
+      velvetMotion01: 0.90,
+      monoCheck: false,
+      masterVolume01: 0.58
+    }
+  };
+
+  DEFAULT_SCENE_PRESETS.hum = {
+    loadSigned01: -0.06,
+    loadLfoDepth01: 0.006,
+    motorVolume01: 0.32,
+    motorPreprocessMs: 180,
+    airVolume01: 0.34,
+    velvetLow01: 0.50,
+    velvetHigh01: 0.20,
+    harmonicNoise01: 0.08,
+    lowRumble01: 0.35,
+    stereoWidth01: 0.85,
+    motorPan01: 0.00,
+    motorPanDrift01: 0.10,
+    velvetMotion01: 0.60,
+    monoCheck: false,
+    masterVolume01: 0.56
+  };
+
+  DEFAULT_SCENE_PRESETS.humSoft = {
+    loadSigned01: -0.10,
+    loadLfoDepth01: 0.004,
+    motorVolume01: 0.18,
+    motorPreprocessMs: 190,
+    noiseBedLevel01: 1.00,
+    airVolume01: 0.30,
+    velvetLow01: 0.42,
+    velvetHigh01: 0.16,
+    harmonicNoise01: 0.05,
+    lowRumble01: 0.20,
+    stereoWidth01: 0.80,
+    motorPan01: 0.00,
+    motorPanDrift01: 0.08,
+    velvetMotion01: 0.50,
+    monoCheck: false,
+    masterVolume01: 0.46
+  };
+
+  // Scene keys now describe source and strength directly.
+  // Keep legacy aliases out of state to avoid ambiguity, but accept them via normalizeSceneKey().
+
+  function normalizeSceneKey(sceneKey) {
+    if (sceneKey === "near") return "vacuumFull";
+    if (sceneKey === "far") return "vacuumSoft";
+    return sceneKey;
+  }
+
+
+  const state = {
+    audioCtx: null,
+    masterGain: null,
+    tonalBedGain: null,
+    noiseBedGain: null,
+    motorGain: null,
+    airGain: null,
+    harmonicNoiseGain: null,
+    lowRumbleGain: null,
+    humGain: null,
+    velvetLowGain: null,
+    velvetHighGain: null,
+    motorPanner: null,
+    airPannerA: null,
+    airPannerB: null,
+    harmonicNoisePanner: null,
+    lowRumblePanner: null,
+    humPanner: null,
+    lowRumbleFilter: null,
+    velvetLowPanner: null,
+    velvetHighPanner: null,
+    motorSource: null,
+    airSourceA: null,
+    airSourceB: null,
+    harmonicNoiseSource: null,
+    lowRumbleSource: null,
+    humSource: null,
+    velvetLowSource: null,
+    velvetHighSource: null,
+    rawSampleBuffer: null,
+    rawHumBuffer: null,
+    processedHumBuffer: null,
+    processedMotorBuffer: null,
+    lastProcessInfo: null,
+    isLoadingSample: false,
+    isRunning: false,
+    wakeLock: null,
+    wakeLockSupported: "wakeLock" in navigator,
+    wakeLockStatus: "not requested",
+    transitionUntilMs: 0,
+    transitionRampSec: ONGOING_CONTROL_RAMP_SEC,
+    tonalTransition: null,
+    pendingLoopPresetTimer: null,
+    sceneButtonTransition: null,
+    sceneButtonPulseUntilMs: 0,
+    sceneButtonVisuals: {},
+    loadLfoTimer: null,
+    loadLfo: {
+      phase: 0,
+      value: 0,
+      effectiveLoad: 0,
+      currentPeriodSec: LOAD_LFO_MIN_PERIOD_SEC,
+      lastTimeSec: null
+    },
+    stereoMotion: {
+      motorDrift: 0,
+      velvetLowDrift: 0,
+      velvetHighDrift: 0
+    },
+    isTechnicalVisible: false,
+    editingPresetKey: "vacuumSoft",
+    modeKey: "vacuumSoft",
+    // Playback mode describes rendering behavior, not user-facing scene selection.
+    // It lets the same scene presets be adapted for sleep-oriented or tactile playback.
+    playbackMode: "sleep",
+    distance01: 1.0,
+    appVolumeDb: 0,
+    appVolumeActual01: 0,
+    appVolumeTargetTouchedAtMs: 0,
+    appVolumeUiActiveUntilMs: 0,
+    appVolumeArmedUntilMs: 0,
+    appVolumeRamp: {
+      from01: 0,
+      to01: 0,
+      startMs: 0,
+      durationMs: 1
+    },
+    volumeAnimationFrame: null,
+    scenePresets: JSON.parse(JSON.stringify(DEFAULT_SCENE_PRESETS)),
+    controls: {
+      load01: 0,
+      loadLfoDepth01: 0.04,
+      motorVolume01: 0.40,
+      motorPreprocessMs: 120,
+      noiseBedLevel01: 1.00,
+      airVolume01: 0.65,
+      velvetLow01: 0.70,
+      velvetHigh01: 0.60,
+      harmonicNoise01: 0.75,
+      lowRumble01: 0.00,
+      stereoWidth01: 1.00,
+      motorPan01: 0.00,
+      motorPanDrift01: 0.25,
+      velvetMotion01: 1.00,
+      monoCheck: false,
+      masterVolume01: 0.70
+    }
+  };
+
+  function setStatus(message) { ui.status.textContent = message; }
+  function setWakeLockStatus(message) {
+    state.wakeLockStatus = message;
+    if (ui.wakeLockStatus) ui.wakeLockStatus.textContent = `Wake Lock: ${message}`;
+    updateDebugView();
+  }
+  function clamp(value, min, max) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return min;
+    return Math.max(min, Math.min(max, n));
+  }
+  function clamp01(value) { return clamp(value, 0, 1); }
+  function clampSigned01(value) { return clamp(value, -1, 1); }
+  function dbToGain(db) { return Math.pow(10, db / 20); }
+
+  function gainToDb(gain) { return 20 * Math.log10(Math.max(1e-6, gain)); }
+  function formatDb(db) {
+    const rounded = Math.round(db);
+    return `${rounded > 0 ? "+" : ""}${rounded} dB`;
+  }
+  function appVolumeDbTo01(db) {
+    return clamp01((db - APP_VOLUME_MIN_DB) / (APP_VOLUME_MAX_DB - APP_VOLUME_MIN_DB));
+  }
+  function appVolume01ToDb(value01) {
+    return APP_VOLUME_MIN_DB + clamp01(value01) * (APP_VOLUME_MAX_DB - APP_VOLUME_MIN_DB);
+  }
+  function getAppVolumeTarget01() {
+    return appVolumeDbTo01(state.appVolumeDb);
+  }
+  function activateVolumeUi(options = {}) {
+    const nowMs = performance.now();
+    state.appVolumeTargetTouchedAtMs = nowMs;
+    state.appVolumeUiActiveUntilMs = nowMs + 3600;
+    if (options.arm !== false) state.appVolumeArmedUntilMs = nowMs + 3600;
+  }
+
+  function isVolumeUiArmed() {
+    return performance.now() < state.appVolumeArmedUntilMs;
+  }
+
+  function getCurrentAppVolumeActual01(nowMs = performance.now()) {
+    const ramp = state.appVolumeRamp;
+    const t = clamp01((nowMs - ramp.startMs) / Math.max(1, ramp.durationMs));
+    return ramp.from01 + (ramp.to01 - ramp.from01) * t;
+  }
+
+  function beginAppVolumeRamp(target01, durationSec, options = {}) {
+    const nowMs = performance.now();
+    const from01 = options.from01 !== undefined ? clamp01(options.from01) : getCurrentAppVolumeActual01(nowMs);
+    state.appVolumeRamp = {
+      from01,
+      to01: clamp01(target01),
+      startMs: nowMs,
+      durationMs: Math.max(1, (Number(durationSec) || 0) * 1000)
+    };
+    state.appVolumeActual01 = from01;
+  }
+  function cloneControlsForPreset() {
+    return {
+      loadSigned01: state.controls.load01,
+      loadLfoDepth01: state.controls.loadLfoDepth01,
+      motorVolume01: state.controls.motorVolume01,
+      motorPreprocessMs: state.controls.motorPreprocessMs,
+      noiseBedLevel01: state.controls.noiseBedLevel01,
+      airVolume01: state.controls.airVolume01,
+      velvetLow01: state.controls.velvetLow01,
+      velvetHigh01: state.controls.velvetHigh01,
+      harmonicNoise01: state.controls.harmonicNoise01,
+      lowRumble01: state.controls.lowRumble01,
+      stereoWidth01: state.controls.stereoWidth01,
+      motorPan01: state.controls.motorPan01,
+      motorPanDrift01: state.controls.motorPanDrift01,
+      velvetMotion01: state.controls.velvetMotion01,
+      monoCheck: state.controls.monoCheck,
+      masterVolume01: state.controls.masterVolume01
+    };
+  }
+  function getModeLabel(modeKey) {
+    modeKey = normalizeSceneKey(modeKey);
+    if (modeKey === "vacuumFull") return "Vacuum";
+    if (modeKey === "vacuumSoft") return "Vacuum soft";
+    if (modeKey === "rumble") return "Rumble";
+    if (modeKey === "hum") return "Hum";
+    if (modeKey === "humSoft") return "Hum soft";
+    return "Far";
+  }
+
+  function getModeButton(modeKey) {
+    modeKey = normalizeSceneKey(modeKey);
+    if (modeKey === "vacuumFull") return ui.nearModeBtn;
+    if (modeKey === "vacuumSoft") return ui.farModeBtn;
+    if (modeKey === "rumble") return ui.rumbleModeBtn;
+    if (modeKey === "hum") return ui.humModeBtn;
+    if (modeKey === "humSoft") return ui.humSoftModeBtn;
+    return null;
+  }
+
+  function isHumMode(modeKey) {
+    return getLoopSourceKind(modeKey) === "humLoop";
+  }
+
+  function getLoopSourceKind(modeKey) {
+    modeKey = normalizeSceneKey(modeKey);
+    return modeKey === "hum" || modeKey === "humSoft" ? "humLoop" : "mainLoop";
+  }
+
+  function getNoiseBedKind(modeKey) {
+    modeKey = normalizeSceneKey(modeKey);
+    if (modeKey === "vacuumFull") return "appliance";
+    if (modeKey === "vacuumSoft") return "softAppliance";
+    if (modeKey === "rumble") return "body";
+    if (modeKey === "hum") return "softBody";
+    if (modeKey === "humSoft") return "softRoom";
+    return "softAppliance";
+  }
+
+  function getSceneDescriptor(modeKey = state.modeKey) {
+    const preset = state.scenePresets[modeKey] || state.scenePresets.vacuumSoft;
+    return {
+      key: modeKey,
+      label: getModeLabel(modeKey),
+      loopSource: getLoopSourceKind(modeKey),
+      noiseBed: getNoiseBedKind(modeKey),
+      strength: preset && preset.motorVolume01 >= 0.30 ? "full" : "soft"
+    };
+  }
+
+  function beginCalmTransition(seconds) {
+    const durationSec = Math.max(0.05, Number(seconds) || ONGOING_CONTROL_RAMP_SEC);
+    state.transitionUntilMs = performance.now() + durationSec * 1000;
+    state.transitionRampSec = durationSec;
+  }
+
+  function getActiveRampSeconds() {
+    return performance.now() < state.transitionUntilMs ? state.transitionRampSec : ONGOING_CONTROL_RAMP_SEC;
+  }
+
+  function markTransition(button, seconds = START_STOP_TRANSITION_SEC) {
+    if (!button) return;
+    const durationMs = Math.max(100, seconds * 1000);
+    button.classList.remove("is-transitioning");
+    void button.offsetWidth;
+    button.classList.add("is-transitioning");
+    window.setTimeout(() => button.classList.remove("is-transitioning"), durationMs);
+  }
+
+  function flashButton(button) {
+    if (!button) return;
+    button.classList.remove("is-flashing");
+    void button.offsetWidth;
+    button.classList.add("is-flashing");
+    window.setTimeout(() => button.classList.remove("is-flashing"), 430);
+  }
+
+  function toggleMonoCheck() {
+    updateControl({ monoCheck: !state.controls.monoCheck }, ONGOING_CONTROL_RAMP_SEC);
+    flashButton(ui.monoCheckBtn);
+    setStatus(state.controls.monoCheck ? "Mono check on." : "Mono check off.");
+  }
+
+  async function ensureLoopSourceForMode(modeKey) {
+    if (!state.audioCtx) return false;
+
+    if (isHumMode(modeKey)) {
+      await loadHumSample();
+      if (state.isRunning && state.processedHumBuffer && !state.humSource) startHumSource();
+    } else {
+      await loadDefaultSample();
+      if (state.isRunning && state.processedMotorBuffer && !state.motorSource) startMotorSource();
+    }
+
+    applyControls(getActiveRampSeconds());
+    return true;
+  }
+
+  function pickPresetKeys(preset, keys) {
+    const partial = {};
+    keys.forEach(key => {
+      if (Object.prototype.hasOwnProperty.call(preset, key)) partial[key] = preset[key];
+    });
+    return partial;
+  }
+
+  function getScenePresetWithAppVolume(modeKey) {
+    const safeModeKey = state.scenePresets[modeKey] ? modeKey : "vacuumSoft";
+    const preset = { ...state.scenePresets[safeModeKey] };
+    // Scene selection combines one Loop Source with one Noise Bed preset.
+    // Legacy preset keys still use motor* names until the deeper refactor.
+    preset.masterVolume01 = clamp(preset.masterVolume01 * dbToGain(state.appVolumeDb), 0, 1);
+    return preset;
+  }
+
+  function applySceneNoiseBedMode(modeKey, rampSeconds = MODE_TRANSITION_SEC) {
+    const preset = getScenePresetWithAppVolume(modeKey);
+    updateControl(pickPresetKeys(preset, NOISE_BED_PRESET_KEYS), rampSeconds);
+    updateSceneUi();
+  }
+
+  function applySceneLoopSourceMode(modeKey, rampSeconds = LOOP_FADE_IN_SEC) {
+    const preset = getScenePresetWithAppVolume(modeKey);
+    // Loop Source settings are switched only while tonal source gain is near zero.
+    // This avoids the old loop briefly jumping to the new scene's pitch/level before fade-out.
+    updateControl(pickPresetKeys(preset, LOOP_SOURCE_PRESET_KEYS), rampSeconds);
+    updateSceneUi();
+  }
+
+  function scheduleLoopSourceModeSwitch(modeKey) {
+    if (state.pendingLoopPresetTimer) {
+      window.clearTimeout(state.pendingLoopPresetTimer);
+      state.pendingLoopPresetTimer = null;
+    }
+    state.pendingLoopPresetTimer = window.setTimeout(() => {
+      state.pendingLoopPresetTimer = null;
+      applySceneLoopSourceMode(modeKey, LOOP_FADE_IN_SEC);
+    }, LOOP_FADE_OUT_SEC * 1000);
+  }
+
+  function selectMode(modeKey) {
+    modeKey = normalizeSceneKey(modeKey);
+    if (!state.scenePresets[modeKey]) return;
+    const previousModeKey = state.modeKey || "vacuumSoft";
+    const isModeChange = previousModeKey !== modeKey;
+
+    if (isModeChange && state.audioCtx) {
+      state.tonalTransition = {
+        fromModeKey: previousModeKey,
+        toModeKey: modeKey,
+        startTimeSec: state.audioCtx.currentTime,
+        durationSec: LOOP_FADE_TO_ZERO_SEC
+      };
+    }
+    if (isModeChange) {
+      state.sceneButtonTransition = {
+        fromModeKey: previousModeKey,
+        toModeKey: modeKey,
+        startMs: performance.now(),
+        durationMs: MODE_TRANSITION_SEC * 1000
+      };
+      state.sceneButtonPulseUntilMs = performance.now() + 650;
+    }
+
+    state.modeKey = modeKey;
+    state.editingPresetKey = modeKey;
+    // Keep distance01 for backwards-compatible debug output only.
+    state.distance01 = modeKey === "vacuumFull" ? 0 : 1;
+    beginCalmTransition(MODE_TRANSITION_SEC);
+
+    if (state.isRunning && isModeChange) {
+      applySceneNoiseBedMode(modeKey, MODE_TRANSITION_SEC);
+      scheduleLoopSourceModeSwitch(modeKey);
+      ensureLoopSourceForMode(modeKey).catch(err => {
+        console.warn("Could not prepare loop source for selected mode", err);
+      });
+    } else {
+      applySceneMode(MODE_TRANSITION_SEC);
+    }
+
+    markTransition(getModeButton(modeKey), MODE_TRANSITION_SEC);
+    setStatus(`Changing mode to ${getModeLabel(modeKey)}…`);
+  }
+
+  function setAppVolume(deltaDb) {
+    setAppVolume01(appVolumeDbTo01(state.appVolumeDb + deltaDb));
+  }
+
+  function setAppVolume01(value01) {
+    const target01 = clamp01(value01);
+    state.appVolumeDb = clamp(appVolume01ToDb(target01), APP_VOLUME_MIN_DB, APP_VOLUME_MAX_DB);
+    activateVolumeUi();
+
+    // When stopped, only the target volume changes. The actual volume display must
+    // stay inactive because no audio gain is moving in the engine.
+    if (state.isRunning) {
+      beginAppVolumeRamp(target01, VOLUME_TRANSITION_SEC);
+      beginCalmTransition(VOLUME_TRANSITION_SEC);
+      applySceneMode(VOLUME_TRANSITION_SEC);
+      setStatus("Changing volume…");
+    } else {
+      state.appVolumeRamp = {
+        from01: 0,
+        to01: 0,
+        startMs: performance.now(),
+        durationMs: 1
+      };
+      state.appVolumeActual01 = 0;
+      setStatus("Volume target set. Start to hear it.");
+    }
+
+    updateVolumeBar();
+  }
+
+  function getDistanceWeights() {
+    const modeKey = state.modeKey || "vacuumSoft";
+    return {
+      vacuumFull: modeKey === "vacuumFull" ? 1 : 0,
+      vacuumSoft: modeKey === "vacuumSoft" ? 1 : 0,
+      rumble: modeKey === "rumble" ? 1 : 0,
+      hum: modeKey === "hum" ? 1 : 0,
+      humSoft: modeKey === "humSoft" ? 1 : 0
+    };
+  }
+
+  function applySceneMode(rampSeconds = MODE_TRANSITION_SEC) {
+    const modeKey = state.scenePresets[state.modeKey] ? state.modeKey : "vacuumSoft";
+    const preset = getScenePresetWithAppVolume(modeKey);
+    updateControl(preset, rampSeconds);
+    updateSceneUi();
+  }
+
+  function applyScenePresetMorph() {
+    applySceneMode(MODE_TRANSITION_SEC);
+  }
+
+  function editPreset(sceneKey) {
+    sceneKey = normalizeSceneKey(sceneKey);
+    if (!state.scenePresets[sceneKey]) return;
+    state.editingPresetKey = sceneKey;
+    updateControl(state.scenePresets[sceneKey], MODE_TRANSITION_SEC);
+    updateSceneUi();
+    setStatus(`Editing ${getModeLabel(sceneKey)} endpoint. Change technical sliders, then save.`);
+  }
+
+  function saveCurrentToPreset(sceneKey) {
+    sceneKey = normalizeSceneKey(sceneKey);
+    if (!state.scenePresets[sceneKey]) return;
+    state.scenePresets[sceneKey] = cloneControlsForPreset();
+    state.editingPresetKey = sceneKey;
+    applySceneMode(MODE_TRANSITION_SEC);
+    setStatus(`Saved current technical controls to ${getModeLabel(sceneKey)} endpoint.`);
+  }
+
+  function resetScenePresets() {
+    state.scenePresets = JSON.parse(JSON.stringify(DEFAULT_SCENE_PRESETS));
+    state.modeKey = "vacuumSoft";
+    state.distance01 = 1.0;
+    state.appVolumeDb = 0;
+    beginAppVolumeRamp(state.isRunning ? getAppVolumeTarget01() : 0, VOLUME_TRANSITION_SEC);
+    state.editingPresetKey = "vacuumSoft";
+    applySceneMode(MODE_TRANSITION_SEC);
+    setStatus("Reset Vacuum/Hum scene presets.");
+  }
+  function toggleTechnicalUi() {
+    state.isTechnicalVisible = !state.isTechnicalVisible;
+    updateTechnicalUi();
+  }
+  function updateTechnicalUi() {
+    [ui.technicalSection, ui.controlSection, ui.debugSection].forEach(section => {
+      if (section) section.classList.toggle("is-hidden", !state.isTechnicalVisible);
+    });
+    if (ui.technicalToggleBtn) ui.technicalToggleBtn.textContent = state.isTechnicalVisible ? "Hide tech" : "Tech";
+  }
+  function updateVolumeBar() {
+    if (!ui.volumeBar) return;
+    const nowMs = performance.now();
+    const target01 = getAppVolumeTarget01();
+    const actual01 = clamp01(getCurrentAppVolumeActual01(nowMs));
+    state.appVolumeActual01 = actual01;
+    const diff01 = Math.abs(target01 - actual01);
+    const isArmed = isVolumeUiArmed();
+    const touchGlow = nowMs < state.appVolumeUiActiveUntilMs ? 1 : 0;
+    const rampGlow = clamp01(diff01 * 5);
+    const glow = Math.max(isArmed ? 0.85 : 0, touchGlow * 0.65, rampGlow);
+
+    ui.volumeBar.style.setProperty("--actual-volume", actual01.toFixed(4));
+    ui.volumeBar.style.setProperty("--target-volume", target01.toFixed(4));
+    ui.volumeBar.style.setProperty("--target-glow", glow.toFixed(3));
+    const isVisuallyActive = glow > 0.05 || diff01 > 0.01;
+    ui.volumeBar.classList.toggle("is-armed", isArmed);
+    ui.volumeBar.classList.toggle("is-active", isVisuallyActive);
+    if (ui.volumeCard) {
+      ui.volumeCard.classList.toggle("is-armed", isArmed);
+      ui.volumeCard.classList.toggle("is-active", isVisuallyActive);
+    }
+    ui.volumeBar.setAttribute("aria-valuenow", String(Math.round(target01 * 100)));
+
+    if (ui.volumeHint) {
+      ui.volumeHint.textContent = isArmed ? "Slide to adjust volume" : "Touch volume once to adjust";
+    }
+
+    if (ui.volumeSegments && ui.volumeSegments.length) {
+      const count = ui.volumeSegments.length;
+      const targetIndex = Math.round(target01 * count);
+      const actualIndex = Math.round(actual01 * count);
+      const lowIndex = Math.min(actualIndex, targetIndex);
+      const highIndex = Math.max(actualIndex, targetIndex);
+      const showDifference = state.isRunning && diff01 > 0.015;
+
+      ui.volumeSegments.forEach((segment, index) => {
+        const oneBased = index + 1;
+        const isInsideTarget = oneBased <= targetIndex;
+        const isInMovingGap = showDifference && oneBased > lowIndex && oneBased <= highIndex;
+
+        // Yellow shows the selected target level and remains visible while stopped.
+        segment.classList.toggle("is-target", isInsideTarget && !isInMovingGap);
+
+        // White shows only temporary transition activity between actual and target.
+        // It is not a persistent actual-level display.
+        segment.classList.toggle("is-difference", isInMovingGap);
+      });
+    }
+  }
+
+  function updateVolumeAnimation() {
+    updateVolumeBar();
+    updateSceneButtonVisuals();
+    state.volumeAnimationFrame = requestAnimationFrame(updateVolumeAnimation);
+  }
+
+  function startVolumeAnimation() {
+    if (state.volumeAnimationFrame) return;
+    state.volumeAnimationFrame = requestAnimationFrame(updateVolumeAnimation);
+  }
+
+  function setVolumeFromPointerEvent(event) {
+    const target = ui.volumeCard || ui.volumeBar;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    // The whole card remains touchable, but horizontal mapping follows the
+    // visible SVG arc field. Outside this field the value simply clamps to 0/1.
+    const visualMinX = rect.left + rect.width * 0.10;
+    const visualMaxX = rect.left + rect.width * 0.90;
+    const value01 = (event.clientX - visualMinX) / Math.max(1, visualMaxX - visualMinX);
+    setAppVolume01(value01);
+  }
+
+  function bindVolumeBar() {
+    const pointerTarget = ui.volumeCard || ui.volumeBar;
+    if (!pointerTarget || !ui.volumeBar) return;
+    let isDragging = false;
+
+    pointerTarget.addEventListener("pointerdown", event => {
+      pointerTarget.setPointerCapture(event.pointerId);
+      if (!isVolumeUiArmed()) {
+        // First touch only arms and brightens the whole volume card.
+        // It must not change the target value, which prevents accidental night-time changes.
+        isDragging = false;
+        activateVolumeUi();
+        updateVolumeBar();
+        return;
+      }
+      isDragging = true;
+      setVolumeFromPointerEvent(event);
+    });
+    pointerTarget.addEventListener("pointermove", event => {
+      if (!isDragging || !isVolumeUiArmed()) return;
+      setVolumeFromPointerEvent(event);
+    });
+    pointerTarget.addEventListener("pointerup", event => {
+      isDragging = false;
+      try { pointerTarget.releasePointerCapture(event.pointerId); } catch (err) {}
+      if (isVolumeUiArmed()) activateVolumeUi();
+    });
+    pointerTarget.addEventListener("pointercancel", () => {
+      isDragging = false;
+    });
+    ui.volumeBar.addEventListener("keydown", event => {
+      if (!isVolumeUiArmed()) {
+        if (["Enter", " ", "ArrowLeft", "ArrowDown", "ArrowRight", "ArrowUp"].includes(event.key)) {
+          event.preventDefault();
+          activateVolumeUi();
+          updateVolumeBar();
+        }
+        return;
+      }
+      if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+        event.preventDefault();
+        setAppVolume(-APP_VOLUME_STEP_DB);
+      }
+      if (event.key === "ArrowRight" || event.key === "ArrowUp") {
+        event.preventDefault();
+        setAppVolume(APP_VOLUME_STEP_DB);
+      }
+    });
+  }
+
+  function getSceneButtonVisualLevel(modeKey, nowMs = performance.now()) {
+    modeKey = normalizeSceneKey(modeKey);
+    const activeModeKey = normalizeSceneKey(state.modeKey || "vacuumSoft");
+    let level = modeKey === activeModeKey ? 1 : 0;
+
+    const transition = state.sceneButtonTransition;
+    if (transition) {
+      const rawT = (nowMs - transition.startMs) / Math.max(1, transition.durationMs);
+      const t = clamp01(rawT);
+      const eased = t * t * (3 - 2 * t);
+      const fromKey = normalizeSceneKey(transition.fromModeKey);
+      const toKey = normalizeSceneKey(transition.toModeKey);
+      if (modeKey === fromKey) level = 1 - eased;
+      else if (modeKey === toKey) level = eased;
+      else level = 0;
+      if (rawT >= 1) state.sceneButtonTransition = null;
+    }
+
+    return clamp01(level);
+  }
+
+  function updateSceneButtonVisuals() {
+    const nowMs = performance.now();
+    const pulse = nowMs < state.sceneButtonPulseUntilMs
+      ? clamp01((state.sceneButtonPulseUntilMs - nowMs) / 650)
+      : 0;
+    const transition = state.sceneButtonTransition;
+    let fromKey = null;
+    let toKey = normalizeSceneKey(state.modeKey || "vacuumSoft");
+    let transitionProgress = 1;
+    if (transition) {
+      fromKey = normalizeSceneKey(transition.fromModeKey);
+      toKey = normalizeSceneKey(transition.toModeKey);
+      transitionProgress = clamp01((nowMs - transition.startMs) / Math.max(1, transition.durationMs));
+    }
+    const phase = nowMs * 0.0065;
+    const oldWave = transition
+      ? (0.5 + 0.5 * Math.sin(phase)) * (1 - transitionProgress)
+      : 0;
+    // The incoming scene intentionally lags the outgoing scene by a quarter cycle:
+    // sin(t - 90deg). This makes the visual energy feel like it flows toward
+    // the new scene instead of anticipating it.
+    const newWave = transition
+      ? (0.5 + 0.5 * Math.sin(phase - Math.PI * 0.5)) * (0.35 + 0.65 * transitionProgress)
+      : 0;
+    const buttons = [
+      ["vacuumFull", ui.nearModeBtn],
+      ["vacuumSoft", ui.farModeBtn],
+      ["rumble", ui.rumbleModeBtn],
+      ["hum", ui.humModeBtn],
+      ["humSoft", ui.humSoftModeBtn]
+    ];
+    buttons.forEach(([key, button]) => {
+      if (!button) return;
+      const normalizedKey = normalizeSceneKey(key);
+      const level = getSceneButtonVisualLevel(normalizedKey, nowMs);
+      const isCurrentTarget = normalizeSceneKey(state.modeKey || "vacuumSoft") === normalizedKey;
+      let wave = 0;
+      if (transition) {
+        if (normalizedKey === fromKey) wave = oldWave * 0.55;
+        if (normalizedKey === toKey) wave = newWave;
+      }
+      button.style.setProperty("--scene-level", level.toFixed(3));
+      button.style.setProperty("--scene-wave", wave.toFixed(3));
+      button.style.setProperty("--scene-pulse", (isCurrentTarget ? pulse : 0).toFixed(3));
+      button.classList.toggle("is-active", level > 0.015 || wave > 0.05);
+    });
+  }
+
+  function updateSceneUi() {
+    const modeKey = state.modeKey || "vacuumSoft";
+
+    updateVolumeBar();
+
+    updateSceneButtonVisuals();
+    if (ui.editNearBtn) ui.editNearBtn.classList.toggle("is-active", state.editingPresetKey === "vacuumFull");
+    if (ui.editFarBtn) ui.editFarBtn.classList.toggle("is-active", state.editingPresetKey === "vacuumSoft");
+    if (ui.editRumbleBtn) ui.editRumbleBtn.classList.toggle("is-active", state.editingPresetKey === "rumble");
+    if (ui.editHumBtn) ui.editHumBtn.classList.toggle("is-active", state.editingPresetKey === "hum");
+    if (ui.editHumSoftBtn) ui.editHumSoftBtn.classList.toggle("is-active", state.editingPresetKey === "humSoft");
+    if (ui.distanceCard) ui.distanceCard.classList.toggle("is-active", true);
+    if (ui.volumeCard) ui.volumeCard.classList.toggle("is-active", state.appVolumeDb !== 0);
+
+  }
+
+  function createAudioContextIfNeeded() {
+    if (!state.audioCtx) {
+      state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      state.masterGain = state.audioCtx.createGain();
+      state.tonalBedGain = state.audioCtx.createGain();
+      state.noiseBedGain = state.audioCtx.createGain();
+      state.motorGain = state.audioCtx.createGain();
+      state.airGain = state.audioCtx.createGain();
+      state.harmonicNoiseGain = state.audioCtx.createGain();
+      state.lowRumbleGain = state.audioCtx.createGain();
+      state.humGain = state.audioCtx.createGain();
+      state.velvetLowGain = state.audioCtx.createGain();
+      state.velvetHighGain = state.audioCtx.createGain();
+      state.motorPanner = state.audioCtx.createStereoPanner();
+      state.airPannerA = state.audioCtx.createStereoPanner();
+      state.airPannerB = state.audioCtx.createStereoPanner();
+      state.harmonicNoisePanner = state.audioCtx.createStereoPanner();
+      state.lowRumblePanner = state.audioCtx.createStereoPanner();
+      state.humPanner = state.audioCtx.createStereoPanner();
+      state.lowRumbleFilter = state.audioCtx.createBiquadFilter();
+      state.lowRumbleFilter.type = "bandpass";
+      state.lowRumbleFilter.frequency.value = 45;
+      state.lowRumbleFilter.Q.value = 1.15;
+      state.velvetLowPanner = state.audioCtx.createStereoPanner();
+      state.velvetHighPanner = state.audioCtx.createStereoPanner();
+
+      // Loop Source: one active emotional anchor at a time.
+      // Keeping source crossfade and scene strength on separate gains avoids abrupt jumps.
+      state.motorPanner.connect(state.motorGain);
+      state.humPanner.connect(state.humGain);
+      state.motorGain.connect(state.tonalBedGain);
+      state.humGain.connect(state.tonalBedGain);
+
+      // Noise Bed: masking and body layers stay shared under all scenes.
+      state.airPannerA.connect(state.airGain);
+      state.airPannerB.connect(state.airGain);
+      state.harmonicNoisePanner.connect(state.harmonicNoiseGain);
+      state.lowRumbleFilter.connect(state.lowRumblePanner);
+      state.lowRumblePanner.connect(state.lowRumbleGain);
+      state.velvetLowPanner.connect(state.velvetLowGain);
+      state.velvetHighPanner.connect(state.velvetHighGain);
+      state.airGain.connect(state.noiseBedGain);
+      state.harmonicNoiseGain.connect(state.noiseBedGain);
+      state.lowRumbleGain.connect(state.noiseBedGain);
+      state.velvetLowGain.connect(state.noiseBedGain);
+      state.velvetHighGain.connect(state.noiseBedGain);
+
+      state.tonalBedGain.connect(state.masterGain);
+      state.noiseBedGain.connect(state.masterGain);
+      state.masterGain.connect(state.audioCtx.destination);
+
+      state.masterGain.gain.value = 0;
+      state.tonalBedGain.gain.value = 0;
+      state.noiseBedGain.gain.value = 1;
+      state.motorGain.gain.value = 0;
+      state.humGain.gain.value = 0;
+      state.airGain.gain.value = 0;
+      state.harmonicNoiseGain.gain.value = 0;
+      state.lowRumbleGain.gain.value = 0;
+      state.velvetLowGain.gain.value = 0;
+      state.velvetHighGain.gain.value = 0;
+    }
+    return state.audioCtx;
+  }
+
+  async function decodeArrayBuffer(arrayBuffer) {
+    const audioCtx = createAudioContextIfNeeded();
+    return await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+  }
+
+  function createSyntheticVibroLoopSourceBuffer(audioCtx, seconds = SYNTHETIC_VIBRO_LOOP_SECONDS) {
+    const sampleRate = audioCtx.sampleRate;
+    const length = Math.max(1, Math.floor(sampleRate * seconds));
+    const buffer = audioCtx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    // Browser-generated fallback loop for asset-free testing.
+    // The modulation rates complete whole cycles inside the 2 s buffer so the
+    // loop wraps cleanly without requiring an external WAV or embedded base64.
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const ampMotion = 0.74 + 0.16 * Math.sin(2 * Math.PI * 0.5 * t - Math.PI * 0.5);
+      const phaseDrift = 0.020 * Math.sin(2 * Math.PI * 0.5 * t);
+      const body =
+        Math.sin(2 * Math.PI * 60 * t + phaseDrift) +
+        0.20 * Math.sin(2 * Math.PI * 120 * t + phaseDrift * 0.6) +
+        0.055 * Math.sin(2 * Math.PI * 180 * t);
+      const softlyDriven = Math.tanh(body * 1.45) / Math.tanh(1.45);
+      data[i] = softlyDriven * ampMotion;
+    }
+
+    let sumSquares = 0;
+    for (let i = 0; i < length; i++) sumSquares += data[i] * data[i];
+    const rms = Math.sqrt(sumSquares / Math.max(1, length));
+    const targetRms = 0.18;
+    if (rms > 1e-9) {
+      const scale = targetRms / rms;
+      for (let i = 0; i < length; i++) data[i] = Math.max(-1, Math.min(1, data[i] * scale));
+    }
+
+    return buffer;
+  }
+
+  function useSyntheticVibroLoopAsMotorFallback(reason = "missing asset") {
+    const audioCtx = createAudioContextIfNeeded();
+    state.rawSampleBuffer = createSyntheticVibroLoopSourceBuffer(audioCtx);
+    const result = preprocessMotorLoop(state.rawSampleBuffer, state.controls.motorPreprocessMs);
+    state.processedMotorBuffer = result.buffer;
+    state.lastProcessInfo = { ...result.info, source: "synthetic-vibro-loop", reason };
+    setStatus("Using generated Vibro loop source fallback for testing.");
+    updateDebugView();
+    return state.rawSampleBuffer;
+  }
+
+  function useSyntheticVibroLoopAsHumFallback(reason = "missing asset") {
+    const audioCtx = createAudioContextIfNeeded();
+    state.rawHumBuffer = createSyntheticVibroLoopSourceBuffer(audioCtx);
+    const result = preprocessMotorLoop(state.rawHumBuffer, state.controls.motorPreprocessMs);
+    state.processedHumBuffer = result.buffer;
+    setStatus("Using generated Vibro loop source fallback for Hum testing.");
+    updateDebugView();
+    return state.rawHumBuffer;
+  }
+
+
+  async function fetchSampleArrayBufferWithFallback() {
+    try {
+      setStatus(`Loading ${DEFAULT_SAMPLE_URL}...`);
+      const response = await fetch(DEFAULT_SAMPLE_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return { arrayBuffer: await response.arrayBuffer(), source: "external" };
+    } catch (externalError) {
+      console.warn("External sample load failed; trying embedded placeholder.", externalError);
+      if (!EMBEDDED_SAMPLE_DATA_URL || !EMBEDDED_SAMPLE_DATA_URL.startsWith("data:audio/")) {
+        throw externalError;
+      }
+      setStatus("Loading embedded backup sample...");
+      const response = await fetch(EMBEDDED_SAMPLE_DATA_URL);
+      return { arrayBuffer: await response.arrayBuffer(), source: "embedded" };
+    }
+  }
+
+  async function loadDefaultSample() {
+    if (state.rawSampleBuffer || state.isLoadingSample) return state.rawSampleBuffer;
+    state.isLoadingSample = true;
+    try {
+      const sampleLoad = await fetchSampleArrayBufferWithFallback();
+      state.rawSampleBuffer = await decodeArrayBuffer(sampleLoad.arrayBuffer);
+      preprocessMotorLoopFromCurrentSettings();
+      setStatus(sampleLoad.source === "embedded" ? "Embedded backup sample loaded and preprocessed. Ready." : "Vacuum sample loaded and preprocessed. Ready.");
+      updateDebugView();
+      return state.rawSampleBuffer;
+    } catch (err) {
+      // A 404 here usually means the /assets folder is missing next to the HTML file.
+      // For test builds, fall back to a generated vibroacoustic loop source.
+      console.warn("Vacuum sample could not be loaded; using generated Vibro loop source fallback.", err);
+      return useSyntheticVibroLoopAsMotorFallback(err && err.message ? err.message : "sample load failed");
+    } finally {
+      state.isLoadingSample = false;
+    }
+  }
+
+
+
+  async function loadHumSample() {
+    if (state.rawHumBuffer || state.isLoadingHumSample) return state.rawHumBuffer;
+    state.isLoadingHumSample = true;
+    try {
+      let arrayBuffer = null;
+      let sourceLabel = "external";
+
+      try {
+        const response = await fetch(DEFAULT_HUM_SAMPLE_URL, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        arrayBuffer = await response.arrayBuffer();
+      } catch (externalError) {
+        // For one-file testing, Hum may reuse its own embedded fallback or the
+        // common embedded tonal sample. This avoids requiring assets/hum.wav.
+        const embeddedHumUrl = EMBEDDED_HUM_SAMPLE_DATA_URL || EMBEDDED_SAMPLE_DATA_URL;
+        if (!embeddedHumUrl || !embeddedHumUrl.startsWith("data:audio/")) throw externalError;
+        const response = await fetch(embeddedHumUrl);
+        arrayBuffer = await response.arrayBuffer();
+        sourceLabel = EMBEDDED_HUM_SAMPLE_DATA_URL ? "embedded hum" : "embedded shared";
+      }
+
+      state.rawHumBuffer = await decodeArrayBuffer(arrayBuffer);
+      // Hum uses the same wrap-crossfade method as the motor layer.
+      // The recording may already fade in and out naturally.
+      const result = preprocessMotorLoop(state.rawHumBuffer, state.controls.motorPreprocessMs);
+      state.processedHumBuffer = result.buffer;
+      setStatus(`Hum sample loaded from ${sourceLabel}. Ready.`);
+      return state.rawHumBuffer;
+    } catch (err) {
+      console.warn("Optional hum sample could not be loaded; using generated Vibro loop source fallback.", err);
+      return useSyntheticVibroLoopAsHumFallback(err && err.message ? err.message : "hum load failed");
+    } finally {
+      state.isLoadingHumSample = false;
+      updateDebugView();
+    }
+  }
+
+  function preprocessMotorLoop(rawBuffer, crossfadeMs) {
+    const ctx = createAudioContextIfNeeded();
+    const requestedFadeSamples = Math.round(rawBuffer.sampleRate * Math.max(0, crossfadeMs) / 1000);
+    const maxFadeSamples = Math.floor(rawBuffer.length * 0.45);
+    const fadeSamples = Math.max(0, Math.min(requestedFadeSamples, maxFadeSamples));
+
+    if (fadeSamples < 2) {
+      const copy = ctx.createBuffer(rawBuffer.numberOfChannels, rawBuffer.length, rawBuffer.sampleRate);
+      for (let ch = 0; ch < rawBuffer.numberOfChannels; ch++) {
+        copy.copyToChannel(rawBuffer.getChannelData(ch), ch, 0);
+      }
+      return {
+        buffer: copy,
+        info: {
+          requestedMs: crossfadeMs,
+          actualMs: 0,
+          fadeSamples: 0,
+          rawLengthSamples: rawBuffer.length,
+          processedLengthSamples: copy.length,
+          method: "copy-no-crossfade"
+        }
+      };
+    }
+
+    // Standard cyclic wrap-crossfade:
+    // Output length becomes N - F. At native-loop wrap, the first samples continue
+    // from the original tail and then fade into the original head. This avoids a
+    // zero-window amplitude dip and keeps runtime playback to one looping source.
+    const processedLength = rawBuffer.length - fadeSamples;
+    const processed = ctx.createBuffer(rawBuffer.numberOfChannels, processedLength, rawBuffer.sampleRate);
+
+    for (let ch = 0; ch < rawBuffer.numberOfChannels; ch++) {
+      const src = rawBuffer.getChannelData(ch);
+      const dst = processed.getChannelData(ch);
+
+      for (let i = 0; i < processedLength; i++) {
+        dst[i] = src[i] || 0;
+      }
+
+      for (let i = 0; i < fadeSamples; i++) {
+        const t = i / Math.max(1, fadeSamples - 1);
+        const fadeIn = Math.sin(t * Math.PI * 0.5);
+        const fadeOut = Math.cos(t * Math.PI * 0.5);
+        const head = src[i] || 0;
+        const tail = src[processedLength + i] || 0;
+        dst[i] = tail * fadeOut + head * fadeIn;
+      }
+    }
+
+    return {
+      buffer: processed,
+      info: {
+        requestedMs: crossfadeMs,
+        actualMs: fadeSamples / rawBuffer.sampleRate * 1000,
+        fadeSamples,
+        rawLengthSamples: rawBuffer.length,
+        processedLengthSamples: processed.length,
+        method: "wrap-crossfade-at-loop-start"
+      }
+    };
+  }
+
+  function preprocessMotorLoopFromCurrentSettings() {
+    if (!state.rawSampleBuffer) return false;
+    const result = preprocessMotorLoop(state.rawSampleBuffer, state.controls.motorPreprocessMs);
+    state.processedMotorBuffer = result.buffer;
+    state.lastProcessInfo = result.info;
+    if (state.rawHumBuffer) {
+      const humResult = preprocessMotorLoop(state.rawHumBuffer, state.controls.motorPreprocessMs);
+      state.processedHumBuffer = humResult.buffer;
+      if (state.isRunning) restartHumSource();
+    }
+    if (state.isRunning) restartMotorSource();
+    updateDebugView();
+    return true;
+  }
+
+  function createNoiseBuffer(audioCtx, seconds, highpassHint) {
+    const length = Math.max(1, Math.floor(audioCtx.sampleRate * seconds));
+    const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let previous = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      previous = previous * 0.92 + white * 0.08;
+      data[i] = highpassHint ? ((white - previous) * 0.03 + previous * 0.32) : previous * 0.50;
+    }
+    return buffer;
+  }
+
+  function createLowRumbleBuffer(audioCtx, seconds = 4.0) {
+    const length = Math.max(1, Math.floor(audioCtx.sampleRate * seconds));
+    const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let brown = 0;
+    let slow = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      brown = Math.max(-1, Math.min(1, brown + white * 0.018));
+      brown *= 0.995;
+      slow = slow * 0.9992 + brown * 0.0008;
+      data[i] = (brown - slow) * 0.42;
+    }
+
+    // Normalize the generated low-frequency bed before the dedicated low-rumble gain.
+    // This makes the 30-60 Hz layer audible enough for tuning while the UI gain still
+    // controls the final level.
+    let sumSquares = 0;
+    for (let i = 0; i < length; i++) sumSquares += data[i] * data[i];
+    const rms = Math.sqrt(sumSquares / Math.max(1, length));
+    const targetRms = 0.18;
+    if (rms > 1e-9) {
+      const scale = targetRms / rms;
+      for (let i = 0; i < length; i++) data[i] = Math.max(-1, Math.min(1, data[i] * scale));
+    }
+    return buffer;
+  }
+
+  function createVelvetNoiseBuffer(audioCtx, seconds, impulsesPerSecond, tone) {
+    const length = Math.max(1, Math.floor(audioCtx.sampleRate * seconds));
+    const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    const impulseCount = Math.max(1, Math.floor(seconds * impulsesPerSecond));
+
+    for (let n = 0; n < impulseCount; n++) {
+      const index = Math.floor(Math.random() * length);
+      const sign = Math.random() < 0.5 ? -1 : 1;
+      const grainSamples = tone === "low" ? 220 : 110;
+      const decay = tone === "low" ? 110 : 55;
+      const amp = tone === "low" ? 0.34 : 0.20;
+      for (let k = 0; k < grainSamples && index + k < length; k++) {
+        const t = k / Math.max(1, grainSamples - 1);
+        const env = Math.sin(t * Math.PI) * Math.exp(-k / decay);
+        data[index + k] += sign * env * amp;
+      }
+    }
+
+    let prev = 0;
+    for (let i = 0; i < length; i++) {
+      prev = prev * 0.88 + data[i] * 0.12;
+      data[i] = prev;
+    }
+
+    let sumSquares = 0;
+    for (let i = 0; i < length; i++) sumSquares += data[i] * data[i];
+    const rms = Math.sqrt(sumSquares / Math.max(1, length));
+    const targetRms = tone === "low" ? 0.10 : 0.07;
+    if (rms > 1e-9) {
+      const scale = targetRms / rms;
+      for (let i = 0; i < length; i++) data[i] = Math.max(-1, Math.min(1, data[i] * scale));
+    }
+    return buffer;
+  }
+
+  function createLoopingBufferSource(buffer, playbackRate = 1) {
+    const source = state.audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.playbackRate.value = playbackRate;
+    return source;
+  }
+
+  function stopSource(source) {
+    if (!source) return;
+    try { source.stop(); } catch (err) {}
+    try { source.disconnect(); } catch (err) {}
+  }
+
+  function refreshEffectiveLoadFromCurrentLfo() {
+    state.loadLfo.effectiveLoad = clampSigned01(
+      state.controls.load01 + state.controls.loadLfoDepth01 * state.loadLfo.value
+    );
+    return state.loadLfo.effectiveLoad;
+  }
+
+  function updateLoadLfoState(nowSec) {
+    const lfo = state.loadLfo;
+    if (lfo.lastTimeSec === null) {
+      lfo.lastTimeSec = nowSec;
+      refreshEffectiveLoadFromCurrentLfo();
+      return;
+    }
+    const dt = Math.max(0, Math.min(0.25, nowSec - lfo.lastTimeSec));
+    lfo.lastTimeSec = nowSec;
+    const periodMod01 = 0.5 + 0.5 * Math.sin(nowSec * 0.13);
+    lfo.currentPeriodSec = LOAD_LFO_MIN_PERIOD_SEC + periodMod01 * (LOAD_LFO_MAX_PERIOD_SEC - LOAD_LFO_MIN_PERIOD_SEC);
+    lfo.phase = (lfo.phase + dt / Math.max(0.001, lfo.currentPeriodSec)) % 1;
+    lfo.value = Math.sin(lfo.phase * Math.PI * 2);
+    state.stereoMotion.motorDrift = Math.sin(nowSec * 0.17) * 0.70 + Math.sin(nowSec * 0.041) * 0.30;
+    state.stereoMotion.velvetLowDrift = Math.sin(nowSec * 0.23 + 1.7);
+    state.stereoMotion.velvetHighDrift = Math.sin(nowSec * 0.37 + 0.4) * 0.65 + Math.sin(nowSec * 0.11 + 2.2) * 0.35;
+    refreshEffectiveLoadFromCurrentLfo();
+  }
+
+  function getLoadForMapping() { return refreshEffectiveLoadFromCurrentLfo(); }
+
+  function computeMappedControls() {
+    const load = getLoadForMapping();
+    const loadUp = Math.max(0, load);
+    const loadDown = Math.max(0, -load);
+    const playbackRate = 1.0 + load * 0.50;
+    const motorLoadGain = dbToGain(loadUp * 3.0);
+    const airLoadGain = dbToGain(-12.0 + loadUp * -6.0 + loadDown * -2.0);
+    const harmonicLoadGain = dbToGain(-4 + loadUp * 8 - loadDown * 2);
+    const velvetLowLoadGain = dbToGain(-4 - loadUp * 1 + loadDown * 1);
+    const velvetHighLoadGain = dbToGain(-7 + loadUp * 4 - loadDown * 2);
+    const lowRumbleLoadGain = dbToGain(2 - loadUp * 2 + loadDown * 5);
+
+    const width = state.controls.monoCheck ? 0 : state.controls.stereoWidth01;
+    const motorPan = state.controls.monoCheck ? 0 : clamp(
+      state.controls.motorPan01 * 0.75 + state.stereoMotion.motorDrift * 0.08 * state.controls.motorPanDrift01,
+      -0.85,
+      0.85
+    );
+    const velvetLowPan = state.stereoMotion.velvetLowDrift * 0.30 * width * state.controls.velvetMotion01;
+    const velvetHighPan = state.stereoMotion.velvetHighDrift * 0.75 * width * state.controls.velvetMotion01;
+
+    return {
+      playbackRate,
+      tonalBedGain: state.controls.motorVolume01 * motorLoadGain,
+      // Noise bed level is the master trim for all shared masking/body layers.
+      // Individual noise controls still shape the texture under this master level.
+      noiseBedGain: state.controls.noiseBedLevel01,
+      airGain: state.controls.airVolume01 * airLoadGain,
+      harmonicNoiseGain: state.controls.harmonicNoise01 * harmonicLoadGain,
+      lowRumbleGain: state.controls.lowRumble01 * lowRumbleLoadGain,
+      lowRumbleFrequency: 42 + loadDown * 10 - loadUp * 4,
+      velvetLowGain: state.controls.velvetLow01 * velvetLowLoadGain,
+      velvetHighGain: state.controls.velvetHigh01 * velvetHighLoadGain,
+      masterGain: state.controls.masterVolume01,
+      stereo: {
+        width,
+        motorPan,
+        airPanA: -0.65 * width,
+        airPanB: 0.65 * width,
+        harmonicNoisePan: 0.12 * width * state.stereoMotion.motorDrift,
+        lowRumblePan: 0.04 * width * state.stereoMotion.motorDrift,
+        velvetLowPan,
+        velvetHighPan
+      }
+    };
+  }
+
+  function scheduleLinearGain(audioParam, targetValue, rampSeconds) {
+    if (!state.audioCtx || !audioParam) return;
+    const now = state.audioCtx.currentTime;
+    const duration = Math.max(0.001, Number(rampSeconds) || 0.001);
+    const current = Number.isFinite(audioParam.value) ? audioParam.value : targetValue;
+    audioParam.cancelScheduledValues(now);
+    audioParam.setValueAtTime(current, now);
+    audioParam.linearRampToValueAtTime(targetValue, now + duration);
+  }
+
+  function getTonalWeights(nowSec) {
+    const currentModeKey = state.modeKey || "vacuumSoft";
+    let motorWeight = isHumMode(currentModeKey) ? 0 : 1;
+    let humWeight = isHumMode(currentModeKey) ? 1 : 0;
+
+    if (!state.tonalTransition) return { motorWeight, humWeight };
+
+    const transition = state.tonalTransition;
+    const elapsedSec = nowSec - transition.startTimeSec;
+    const fromMotor = isHumMode(transition.fromModeKey) ? 0 : 1;
+    const fromHum = isHumMode(transition.fromModeKey) ? 1 : 0;
+    const toMotor = isHumMode(transition.toModeKey) ? 0 : 1;
+    const toHum = isHumMode(transition.toModeKey) ? 1 : 0;
+
+    // Tonal loop sources should not smear across scene changes.
+    // Fade the old loop source to zero, then fade the new loop source in.
+    // The shared Noise Bed still uses the longer scene ramp for continuity.
+    if (elapsedSec < LOOP_FADE_OUT_SEC) {
+      const t = clamp01(elapsedSec / Math.max(0.001, LOOP_FADE_OUT_SEC));
+      const eased = t * t * (3 - 2 * t);
+      motorWeight = fromMotor * (1 - eased);
+      humWeight = fromHum * (1 - eased);
+    } else if (elapsedSec < LOOP_FADE_TO_ZERO_SEC) {
+      const t = clamp01((elapsedSec - LOOP_FADE_OUT_SEC) / Math.max(0.001, LOOP_FADE_IN_SEC));
+      const eased = t * t * (3 - 2 * t);
+      motorWeight = toMotor * eased;
+      humWeight = toHum * eased;
+    } else {
+      motorWeight = toMotor;
+      humWeight = toHum;
+      state.tonalTransition = null;
+    }
+
+    return { motorWeight, humWeight };
+  }
+
+  function applyControls(rampSeconds = 0.08) {
+    if (!state.audioCtx || !state.masterGain) return;
+    const now = state.audioCtx.currentTime;
+    const mapped = computeMappedControls();
+
+    if (state.motorSource) {
+      state.motorSource.playbackRate.setTargetAtTime(mapped.playbackRate, now, rampSeconds);
+    }
+    if (state.humSource) {
+      state.humSource.playbackRate.setTargetAtTime(mapped.playbackRate, now, rampSeconds);
+    }
+
+    if (state.motorPanner) state.motorPanner.pan.setTargetAtTime(mapped.stereo.motorPan, now, rampSeconds);
+    if (state.humPanner) state.humPanner.pan.setTargetAtTime(mapped.stereo.motorPan, now, rampSeconds);
+    if (state.airPannerA) state.airPannerA.pan.setTargetAtTime(mapped.stereo.airPanA, now, rampSeconds);
+    if (state.airPannerB) state.airPannerB.pan.setTargetAtTime(mapped.stereo.airPanB, now, rampSeconds);
+    if (state.harmonicNoisePanner) state.harmonicNoisePanner.pan.setTargetAtTime(mapped.stereo.harmonicNoisePan, now, rampSeconds);
+    if (state.lowRumblePanner) state.lowRumblePanner.pan.setTargetAtTime(mapped.stereo.lowRumblePan, now, rampSeconds);
+    if (state.lowRumbleFilter) state.lowRumbleFilter.frequency.setTargetAtTime(mapped.lowRumbleFrequency, now, Math.max(0.12, rampSeconds));
+    if (state.velvetLowPanner) state.velvetLowPanner.pan.setTargetAtTime(mapped.stereo.velvetLowPan, now, rampSeconds);
+    if (state.velvetHighPanner) state.velvetHighPanner.pan.setTargetAtTime(mapped.stereo.velvetHighPan, now, rampSeconds);
+
+    // Source gains are used only for tonal crossfade. Scene strength is applied
+    // on tonalBedGain below, so Near/Far/Hum changes do not overwrite the xfade.
+    const tonalWeights = getTonalWeights(now);
+    const tonalRampSeconds = state.tonalTransition ? 0.06 : Math.min(rampSeconds, 0.75);
+    scheduleLinearGain(state.motorGain.gain, tonalWeights.motorWeight, tonalRampSeconds);
+    if (state.humGain) scheduleLinearGain(state.humGain.gain, HUM_GAIN_BOOST * tonalWeights.humWeight, tonalRampSeconds);
+
+    if (state.tonalBedGain) state.tonalBedGain.gain.setTargetAtTime(mapped.tonalBedGain, now, rampSeconds);
+    if (state.noiseBedGain) state.noiseBedGain.gain.setTargetAtTime(mapped.noiseBedGain, now, rampSeconds);
+    state.airGain.gain.setTargetAtTime(mapped.airGain, now, rampSeconds);
+    state.harmonicNoiseGain.gain.setTargetAtTime(mapped.harmonicNoiseGain, now, rampSeconds);
+    state.lowRumbleGain.gain.setTargetAtTime(mapped.lowRumbleGain, now, rampSeconds);
+    state.velvetLowGain.gain.setTargetAtTime(mapped.velvetLowGain, now, rampSeconds);
+    state.velvetHighGain.gain.setTargetAtTime(mapped.velvetHighGain, now, rampSeconds);
+    scheduleLinearGain(state.masterGain.gain, mapped.masterGain, rampSeconds);
+    updateDebugView();
+  }
+
+  // Legacy function name retained for compatibility. This starts the main Loop Source.
+  function startMotorSource() {
+    if (!state.audioCtx || !state.processedMotorBuffer) return false;
+    const mapped = computeMappedControls();
+    const source = createLoopingBufferSource(state.processedMotorBuffer, mapped.playbackRate);
+    source.connect(state.motorPanner);
+    source.start(state.audioCtx.currentTime + 0.02);
+    state.motorSource = source;
+    return true;
+  }
+
+  // Legacy function name retained for compatibility. This starts the Hum Loop Source.
+  function startHumSource() {
+    if (!state.audioCtx || !state.processedHumBuffer) return false;
+    const source = createLoopingBufferSource(state.processedHumBuffer, 1);
+    source.connect(state.humPanner);
+    source.start(state.audioCtx.currentTime + 0.02);
+    state.humSource = source;
+    return true;
+  }
+
+  function restartHumSource() {
+    if (!state.audioCtx || !state.isRunning || !state.processedHumBuffer) return false;
+    const oldSource = state.humSource;
+    startHumSource();
+    if (oldSource) {
+      try { oldSource.stop(state.audioCtx.currentTime + 0.04); } catch (err) {}
+      setTimeout(() => stopSource(oldSource), 90);
+    }
+    applyControls(0.04);
+    return true;
+  }
+
+  function restartMotorSource() {
+    if (!state.audioCtx || !state.isRunning || !state.processedMotorBuffer) return false;
+    const oldSource = state.motorSource;
+    startMotorSource();
+    if (oldSource) {
+      try { oldSource.stop(state.audioCtx.currentTime + 0.04); } catch (err) {}
+      setTimeout(() => stopSource(oldSource), 90);
+    }
+    applyControls(0.04);
+    return true;
+  }
+
+  function startLoadLfoUpdater() {
+    if (state.loadLfoTimer) return;
+    if (state.audioCtx) state.loadLfo.lastTimeSec = state.audioCtx.currentTime;
+    state.loadLfoTimer = setInterval(() => {
+      if (!state.audioCtx || !state.isRunning) return;
+      updateLoadLfoState(state.audioCtx.currentTime);
+      applyControls(getActiveRampSeconds());
+    }, 50);
+  }
+
+  function stopLoadLfoUpdater() {
+    clearInterval(state.loadLfoTimer);
+    state.loadLfoTimer = null;
+    state.loadLfo.lastTimeSec = null;
+  }
+
+  async function requestWakeLock() {
+    if (!("wakeLock" in navigator)) {
+      setWakeLockStatus("unavailable");
+      return false;
+    }
+    if (state.wakeLock) {
+      setWakeLockStatus("active");
+      return true;
+    }
+
+    try {
+      state.wakeLock = await navigator.wakeLock.request("screen");
+      setWakeLockStatus("active");
+      state.wakeLock.addEventListener("release", () => {
+        state.wakeLock = null;
+        setWakeLockStatus("released");
+      });
+      return true;
+    } catch (error) {
+      console.warn("Wake Lock request failed", error);
+      setWakeLockStatus(error && error.name ? `failed: ${error.name}` : "failed");
+      return false;
+    }
+  }
+
+  async function releaseWakeLock() {
+    if (!state.wakeLock) return;
+    try {
+      await state.wakeLock.release();
+    } catch (error) {
+      console.warn("Wake Lock release failed", error);
+    } finally {
+      state.wakeLock = null;
+      setWakeLockStatus("released");
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && state.isRunning) {
+      requestWakeLock();
+    }
+  });
+
+  async function startAudio() {
+    const audioCtx = createAudioContextIfNeeded();
+    await audioCtx.resume();
+
+    // Prepare both loop sources at startup. If external assets are missing,
+    // synthetic Vibro fallback buffers are generated, so later scene changes do not
+    // need to start a new source abruptly in the middle of a crossfade.
+    await loadDefaultSample();
+    await loadHumSample();
+    if (!state.processedMotorBuffer && !state.processedHumBuffer) {
+      setStatus("No loop source buffers. Synthetic fallback should have been generated.");
+      return false;
+    }
+    if (state.isRunning) return true;
+
+    updateLoadLfoState(audioCtx.currentTime);
+    state.airSourceA = createLoopingBufferSource(createNoiseBuffer(audioCtx, 2.3, false), 1);
+    state.airSourceB = createLoopingBufferSource(createNoiseBuffer(audioCtx, 3.1, true), 1);
+    state.harmonicNoiseSource = createLoopingBufferSource(createNoiseBuffer(audioCtx, 1.7, true), 1);
+    state.lowRumbleSource = createLoopingBufferSource(createLowRumbleBuffer(audioCtx, 4.3), 1);
+    state.velvetLowSource = createLoopingBufferSource(createVelvetNoiseBuffer(audioCtx, 4.7, 1200, "low"), 1);
+    state.velvetHighSource = createLoopingBufferSource(createVelvetNoiseBuffer(audioCtx, 3.9, 1800, "high"), 1);
+
+    state.airSourceA.connect(state.airPannerA);
+    state.airSourceB.connect(state.airPannerB);
+    state.harmonicNoiseSource.connect(state.harmonicNoisePanner);
+    state.lowRumbleSource.connect(state.lowRumbleFilter);
+    state.velvetLowSource.connect(state.velvetLowPanner);
+    state.velvetHighSource.connect(state.velvetHighPanner);
+
+    const now = audioCtx.currentTime;
+    state.masterGain.gain.cancelScheduledValues(now);
+    state.masterGain.gain.setValueAtTime(0, now);
+
+    if (state.processedMotorBuffer) startMotorSource();
+    if (state.processedHumBuffer) startHumSource();
+    state.airSourceA.start(now);
+    state.airSourceB.start(now);
+    state.harmonicNoiseSource.start(now);
+    state.lowRumbleSource.start(now);
+    state.velvetLowSource.start(now);
+    state.velvetHighSource.start(now);
+
+    state.isRunning = true;
+    beginAppVolumeRamp(getAppVolumeTarget01(), START_STOP_TRANSITION_SEC, { from01: 0 });
+    activateVolumeUi({ arm: false });
+    await requestWakeLock();
+    beginCalmTransition(START_STOP_TRANSITION_SEC);
+    applyControls(START_STOP_TRANSITION_SEC);
+    startLoadLfoUpdater();
+    setStatus("Running. One Loop Source with a shared Noise Bed is active.");
+    updateTransportUi();
+    return true;
+  }
+
+  function stopAudio() {
+    if (!state.audioCtx || !state.isRunning) return false;
+    stopLoadLfoUpdater();
+    releaseWakeLock();
+    beginAppVolumeRamp(0, STOP_FADE_SEC);
+    activateVolumeUi({ arm: false });
+    const now = state.audioCtx.currentTime;
+    const stopAt = now + STOP_FADE_SEC;
+    state.masterGain.gain.cancelScheduledValues(now);
+    state.masterGain.gain.setValueAtTime(state.masterGain.gain.value, now);
+    state.masterGain.gain.linearRampToValueAtTime(0.0001, stopAt);
+
+    const sources = [
+      state.motorSource,
+      state.humSource,
+      state.airSourceA,
+      state.airSourceB,
+      state.harmonicNoiseSource,
+      state.lowRumbleSource,
+      state.velvetLowSource,
+      state.velvetHighSource
+    ];
+
+    setTimeout(() => {
+      sources.forEach(stopSource);
+      state.motorSource = null;
+      state.humSource = null;
+      state.airSourceA = null;
+      state.airSourceB = null;
+      state.harmonicNoiseSource = null;
+      state.lowRumbleSource = null;
+      state.velvetLowSource = null;
+      state.velvetHighSource = null;
+      state.isRunning = false;
+      state.appVolumeRamp = { from01: 0, to01: 0, startMs: performance.now(), durationMs: 1 };
+      state.appVolumeActual01 = 0;
+      updateVolumeBar();
+      setStatus("Stopped.");
+      updateTransportUi();
+      updateDebugView();
+    }, STOP_FADE_SEC * 1000 + 120);
+    return true;
+  }
+
+  function normalizeLoopControlAliases(params = {}) {
+    const normalized = { ...params };
+    Object.entries({ ...LOOP_CONTROL_ALIAS_TO_LEGACY, ...NOISE_CONTROL_ALIAS_TO_LEGACY }).forEach(([aliasKey, legacyKey]) => {
+      if (typeof normalized[aliasKey] === "number" && typeof normalized[legacyKey] !== "number") {
+        normalized[legacyKey] = normalized[aliasKey];
+      }
+    });
+    return normalized;
+  }
+
+  function getLoopControlAliases() {
+    return {
+      loopPitchPull01: state.controls.load01,
+      loopMotionDepth01: state.controls.loadLfoDepth01,
+      loopLevel01: state.controls.motorVolume01,
+      loopCrossfadeMs: state.controls.motorPreprocessMs,
+      loopPan01: state.controls.motorPan01,
+      loopDrift01: state.controls.motorPanDrift01
+    };
+  }
+
+  function getNoiseBedControlAliases() {
+    return {
+      airWash01: state.controls.airVolume01,
+      softTextureLow01: state.controls.velvetLow01,
+      softTextureHigh01: state.controls.velvetHigh01,
+      maskingNoise01: state.controls.harmonicNoise01,
+      bodyRumble01: state.controls.lowRumble01,
+      noiseWidth01: state.controls.stereoWidth01,
+      textureMotion01: state.controls.velvetMotion01
+    };
+  }
+
+  function updateControl(params = {}, rampSeconds = 0.08) {
+    params = normalizeLoopControlAliases(params);
+    const previousLoopCrossfadeMs = state.controls.motorPreprocessMs;
+
+    if (typeof params.loadSigned01 === "number") state.controls.load01 = clampSigned01(params.loadSigned01);
+    else if (typeof params.load01 === "number") state.controls.load01 = clampSigned01(params.load01 * 2 - 1);
+
+    if (typeof params.loadLfoDepth01 === "number") state.controls.loadLfoDepth01 = clamp(params.loadLfoDepth01, 0, 0.30);
+    if (typeof params.motorVolume01 === "number") state.controls.motorVolume01 = clamp(params.motorVolume01, 0, 1.5);
+    if (typeof params.motorPreprocessMs === "number") state.controls.motorPreprocessMs = clamp(params.motorPreprocessMs, 0, 300);
+    if (typeof params.noiseBedLevel01 === "number") state.controls.noiseBedLevel01 = clamp(params.noiseBedLevel01, 0, 1.5);
+    if (typeof params.airVolume01 === "number") state.controls.airVolume01 = clamp01(params.airVolume01);
+    if (typeof params.velvetLow01 === "number") state.controls.velvetLow01 = clamp01(params.velvetLow01);
+    if (typeof params.velvetHigh01 === "number") state.controls.velvetHigh01 = clamp01(params.velvetHigh01);
+    if (typeof params.harmonicNoise01 === "number") state.controls.harmonicNoise01 = clamp01(params.harmonicNoise01);
+    if (typeof params.lowRumble01 === "number") state.controls.lowRumble01 = clamp(params.lowRumble01, 0, 1.5);
+    if (typeof params.stereoWidth01 === "number") state.controls.stereoWidth01 = clamp01(params.stereoWidth01);
+    if (typeof params.motorPan01 === "number") state.controls.motorPan01 = clampSigned01(params.motorPan01);
+    if (typeof params.motorPanDrift01 === "number") state.controls.motorPanDrift01 = clamp01(params.motorPanDrift01);
+    if (typeof params.velvetMotion01 === "number") state.controls.velvetMotion01 = clamp01(params.velvetMotion01);
+    if (typeof params.monoCheck === "number") state.controls.monoCheck = params.monoCheck >= 0.5;
+    if (typeof params.monoCheck === "boolean") state.controls.monoCheck = params.monoCheck;
+    if (typeof params.masterVolume01 === "number") state.controls.masterVolume01 = clamp01(params.masterVolume01);
+
+    const loopCrossfadeChanged = Math.abs(state.controls.motorPreprocessMs - previousLoopCrossfadeMs) > 0.001;
+    if (loopCrossfadeChanged && (state.rawSampleBuffer || state.rawHumBuffer)) {
+      // Rebuild loaded loop buffers immediately when the Loop crossfade slider changes.
+      // This keeps the technical UI responsive without requiring the Reprocess loop button.
+      preprocessMotorLoopFromCurrentSettings();
+    }
+
+    refreshEffectiveLoadFromCurrentLfo();
+    applyControls(rampSeconds);
+    syncUiFromState();
+    return getState();
+  }
+
+  async function start() { await startAudio(); return getState(); }
+  function stop() { stopAudio(); return getState(); }
+
+  function reprocessMotorLoop() {
+    const ok = preprocessMotorLoopFromCurrentSettings();
+    setStatus(ok ? `Reprocessed loop sources: ${Math.round(state.lastProcessInfo.actualMs)} ms wrap-crossfade.` : "No loop source to reprocess.");
+    syncUiFromState();
+    return getState();
+  }
+
+  // New API name for Loop Source terminology; old reprocessMotorLoop remains available.
+  function reprocessLoopSource() {
+    return reprocessMotorLoop();
+  }
+
+  function getState() {
+    const mapped = computeMappedControls();
+    return {
+      version: VERSION,
+      isRunning: state.isRunning,
+      hasSample: Boolean(state.rawSampleBuffer),
+      hasProcessedMotorBuffer: Boolean(state.processedMotorBuffer),
+      hasHumSample: Boolean(state.rawHumBuffer),
+      hasProcessedHumBuffer: Boolean(state.processedHumBuffer),
+      isLoadingSample: state.isLoadingSample,
+      wakeLock: {
+        supported: state.wakeLockSupported,
+        active: Boolean(state.wakeLock),
+        status: state.wakeLockStatus
+      },
+      transition: {
+        active: performance.now() < state.transitionUntilMs,
+        rampSeconds: getActiveRampSeconds(),
+        loopFadeOutSeconds: LOOP_FADE_OUT_SEC,
+        loopFadeInSeconds: LOOP_FADE_IN_SEC,
+        loopFadeToZeroSeconds: LOOP_FADE_TO_ZERO_SEC,
+        tonalTransition: state.tonalTransition
+      },
+      sample: state.rawSampleBuffer ? {
+        rawDurationSec: state.rawSampleBuffer.duration,
+        processedDurationSec: state.processedMotorBuffer ? state.processedMotorBuffer.duration : null,
+        sampleRate: state.rawSampleBuffer.sampleRate,
+        channels: state.rawSampleBuffer.numberOfChannels
+      } : null,
+      controls: { ...state.controls, loadSigned01: state.controls.load01, ...getLoopControlAliases(), ...getNoiseBedControlAliases() },
+      loopControls: getLoopControlAliases(),
+      noiseBedControls: getNoiseBedControlAliases(),
+      legacyControlKeys: {
+        motorVolume01: "loopLevel01",
+        motorPreprocessMs: "loopCrossfadeMs",
+        motorPan01: "loopPan01",
+        motorPanDrift01: "loopDrift01",
+        loadSigned01: "loopPitchPull01",
+        loadLfoDepth01: "loopMotionDepth01",
+        airVolume01: "airWash01",
+        velvetLow01: "softTextureLow01",
+        velvetHigh01: "softTextureHigh01",
+        harmonicNoise01: "maskingNoise01",
+        lowRumble01: "bodyRumble01",
+        stereoWidth01: "noiseWidth01",
+        velvetMotion01: "textureMotion01"
+      },
+      scene: { ...getSceneDescriptor(), playbackMode: state.playbackMode },
+      scenes: { playbackMode: state.playbackMode, modeKey: state.modeKey, distance01: state.distance01, appVolumeDb: state.appVolumeDb, appVolumeTarget01: getAppVolumeTarget01(), appVolumeActual01: state.appVolumeActual01, editingPresetKey: state.editingPresetKey, weights: getDistanceWeights(), presets: state.scenePresets },
+      loadLfo: { ...state.loadLfo },
+      mapped: {
+        ...mapped,
+        loopSourceBedGain: mapped.tonalBedGain,
+        loopPlaybackRate: mapped.playbackRate,
+        noiseBedGain: mapped.noiseBedGain
+      },
+      loopSource: {
+        activeVoices: (state.motorSource ? 1 : 0) + (state.humSource ? 1 : 0),
+        monoFallbackLoop: true,
+        humLoopAvailable: Boolean(state.processedHumBuffer),
+        processedLoop: true,
+        processInfo: state.lastProcessInfo
+      },
+      legacyMotorLoop: {
+        activeVoices: (state.motorSource ? 1 : 0) + (state.humSource ? 1 : 0),
+        nativeLoopUsedForMotor: true,
+        humLoopAvailable: Boolean(state.processedHumBuffer),
+        processedLoop: true,
+        processInfo: state.lastProcessInfo
+      }
+    };
+  }
+
+  function updateLoopSource(params = {}, rampSeconds = ONGOING_CONTROL_RAMP_SEC) {
+    // Preferred API wrapper for Loop Source controls. Legacy motor* keys still work.
+    return updateControl(params, rampSeconds);
+  }
+
+  function updateNoiseBed(params = {}, rampSeconds = ONGOING_CONTROL_RAMP_SEC) {
+    // Preferred API wrapper for Noise Bed controls. Legacy velvet*/air* keys still work.
+    return updateControl(params, rampSeconds);
+  }
+
+  const publicApi = Object.freeze({
+    updateControl,
+    updateLoopSource,
+    updateNoiseBed,
+    start,
+    stop,
+    getState,
+    reprocessLoopSource,
+    reprocessMotorLoop
+  });
+
+  window.vacuumSampleLabApi = publicApi;
+  window.elsiSleepSoundApi = publicApi;
+
+  function syncUiFromState() {
+    const values = {
+      loadSigned01: state.controls.load01,
+      loadLfoDepth01: state.controls.loadLfoDepth01,
+      motorVolume01: state.controls.motorVolume01,
+      motorPreprocessMs: state.controls.motorPreprocessMs,
+      noiseBedLevel01: state.controls.noiseBedLevel01,
+      airVolume01: state.controls.airVolume01,
+      velvetLow01: state.controls.velvetLow01,
+      velvetHigh01: state.controls.velvetHigh01,
+      harmonicNoise01: state.controls.harmonicNoise01,
+      lowRumble01: state.controls.lowRumble01,
+      stereoWidth01: state.controls.stereoWidth01,
+      motorPan01: state.controls.motorPan01,
+      motorPanDrift01: state.controls.motorPanDrift01,
+      velvetMotion01: state.controls.velvetMotion01,
+      monoCheck: state.controls.monoCheck ? 1 : 0,
+      masterVolume01: state.controls.masterVolume01
+    };
+
+    controlKeys.forEach(key => {
+      const input = document.getElementById(key);
+      const output = document.getElementById(`${key}Out`);
+      if (input && document.activeElement !== input) input.value = String(values[key]);
+      if (output) {
+        if (key === "motorPreprocessMs") output.value = `${Math.round(values[key])} ms`;
+        else if (key === "monoCheck") output.value = state.controls.monoCheck ? "on" : "off";
+        else output.value = Number(values[key]).toFixed(2);
+      }
+    });
+
+    if (ui.monoCheckOut) ui.monoCheckOut.value = state.controls.monoCheck ? "on" : "off";
+    if (ui.monoCheckBtn) {
+      ui.monoCheckBtn.textContent = state.controls.monoCheck ? "Mono on" : "Mono off";
+      ui.monoCheckBtn.classList.toggle("is-pressed", state.controls.monoCheck);
+      ui.monoCheckBtn.setAttribute("aria-pressed", state.controls.monoCheck ? "true" : "false");
+    }
+  }
+
+  function updateTransportUi() {
+    if (!ui.startStopBtn) return;
+    ui.startStopBtn.textContent = state.isRunning ? "Stop" : "Start";
+    ui.startStopBtn.classList.toggle("primary", !state.isRunning);
+  }
+
+  function roundDebugValue(value) {
+    if (typeof value !== "number") return value;
+    if (!Number.isFinite(value)) return value;
+    return Math.abs(value) >= 100 ? Number(value.toFixed(1)) : Number(value.toFixed(3));
+  }
+
+  function makeDebugStateCompact(value) {
+    if (Array.isArray(value)) return value.map(makeDebugStateCompact);
+    if (value && typeof value === "object") {
+      const result = {};
+      Object.entries(value).forEach(([key, item]) => {
+        result[key] = makeDebugStateCompact(item);
+      });
+      return result;
+    }
+    return roundDebugValue(value);
+  }
+
+  function updateDebugView() {
+    if (!ui.debugView) return;
+    // Keep debug values compact so long floating point numbers do not cause
+    // the technical UI layout to jump or wrap unpredictably.
+    ui.debugView.textContent = JSON.stringify(makeDebugStateCompact(getState()), null, 2);
+  }
+
+  function bindUi() {
+    ui.startStopBtn.addEventListener("click", () => {
+      markTransition(ui.startStopBtn, START_STOP_TRANSITION_SEC);
+      beginCalmTransition(START_STOP_TRANSITION_SEC);
+      if (state.isRunning) {
+        setStatus("Stopping…");
+        stop();
+        return;
+      }
+      setStatus("Starting…");
+      start().catch(err => {
+        console.error(err);
+        setStatus(String(err && err.message ? err.message : err));
+      });
+    });
+    if (ui.technicalToggleBtn) ui.technicalToggleBtn.addEventListener("click", () => toggleTechnicalUi());
+    if (ui.nearModeBtn) ui.nearModeBtn.addEventListener("click", () => selectMode("vacuumFull"));
+    if (ui.farModeBtn) ui.farModeBtn.addEventListener("click", () => selectMode("vacuumSoft"));
+    if (ui.rumbleModeBtn) ui.rumbleModeBtn.addEventListener("click", () => selectMode("rumble"));
+    if (ui.humModeBtn) ui.humModeBtn.addEventListener("click", () => selectMode("hum"));
+    if (ui.humSoftModeBtn) ui.humSoftModeBtn.addEventListener("click", () => selectMode("humSoft"));
+    bindVolumeBar();
+    if (ui.monoCheckBtn) ui.monoCheckBtn.addEventListener("click", () => toggleMonoCheck());
+    if (ui.editNearBtn) ui.editNearBtn.addEventListener("click", () => editPreset("vacuumFull"));
+    if (ui.editFarBtn) ui.editFarBtn.addEventListener("click", () => editPreset("vacuumSoft"));
+    if (ui.editRumbleBtn) ui.editRumbleBtn.addEventListener("click", () => editPreset("rumble"));
+    if (ui.editHumBtn) ui.editHumBtn.addEventListener("click", () => editPreset("hum"));
+    if (ui.editHumSoftBtn) ui.editHumSoftBtn.addEventListener("click", () => editPreset("humSoft"));
+    if (ui.reprocessBtn) ui.reprocessBtn.addEventListener("click", () => reprocessMotorLoop());
+    if (ui.saveNearBtn) ui.saveNearBtn.addEventListener("click", () => saveCurrentToPreset("vacuumFull"));
+    if (ui.saveFarBtn) ui.saveFarBtn.addEventListener("click", () => saveCurrentToPreset("vacuumSoft"));
+    if (ui.saveRumbleBtn) ui.saveRumbleBtn.addEventListener("click", () => saveCurrentToPreset("rumble"));
+    if (ui.saveHumBtn) ui.saveHumBtn.addEventListener("click", () => saveCurrentToPreset("hum"));
+    if (ui.saveHumSoftBtn) ui.saveHumSoftBtn.addEventListener("click", () => saveCurrentToPreset("humSoft"));
+    if (ui.resetPresetsBtn) ui.resetPresetsBtn.addEventListener("click", () => resetScenePresets());
+    ui.stateBtn.addEventListener("click", () => {
+      console.log("elsiSleepSoundApi.getState()", getState());
+      updateDebugView();
+    });
+    document.querySelectorAll(".preset-actions button").forEach(button => {
+      button.addEventListener("click", () => flashButton(button));
+    });
+    controlKeys.forEach(key => {
+      const input = document.getElementById(key);
+      if (!input) return;
+      input.addEventListener("input", () => {
+        const params = {};
+        params[key] = Number(input.value);
+        updateControl(params);
+      });
+    });
+  }
+
+  bindUi();
+  applySceneMode(0);
+  syncUiFromState();
+  updateTransportUi();
+  updateTechnicalUi();
+  updateSceneUi();
+  startVolumeAnimation();
+  setWakeLockStatus(state.wakeLockSupported ? "available" : "unavailable");
+  updateDebugView();
+  // Do not preload audio files here. The selected Loop Source is loaded on Start.
+  // Shared embedded-loop tests can run without external assets when EMBEDDED_SAMPLE_DATA_URL is filled locally.
+})();
+</script>
+</body>
+</html>
