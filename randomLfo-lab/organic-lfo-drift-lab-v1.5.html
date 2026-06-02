@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Organic LFO Drift Lab</title>
+  <style>
+    :root {
+      --bg: #101214;
+      --panel: #181c20;
+      --panel2: #20262b;
+      --text: #e7ecef;
+      --muted: #9aa6ad;
+      --line: #354049;
+      --accent: #e6c15a;
+      --ok: #78d0a4;
+      --warn: #e28b72;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1a2025 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    main {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: clamp(24px, 4vw, 42px);
+      font-weight: 650;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .version {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+      white-space: nowrap;
+      padding-top: 8px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 16px;
+    }
+
+    .panel {
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 140px 1fr 58px;
+      gap: 10px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    label { color: var(--muted); }
+
+    .section-title {
+      margin: 12px 0 2px;
+      padding-top: 8px;
+      border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    input[type="range"] { width: 100%; }
+
+    select, button {
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 650;
+    }
+
+    button.running {
+      border-color: color-mix(in srgb, var(--ok) 65%, var(--line));
+      color: var(--ok);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .debug {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .debug span {
+      color: var(--text);
+    }
+
+    .plots {
+      display: grid;
+      gap: 12px;
+    }
+
+    .plot-card {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+    }
+
+    .plot-title {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 120px;
+      display: block;
+      background: #0b0d0f;
+      border-radius: 10px;
+    }
+
+    .note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 880px) {
+      .grid { grid-template-columns: 1fr; }
+      header { flex-direction: column; }
+      .version { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Organic LFO Drift Lab</h1>
+        <div class="subtitle">Standalone spring-mass-damper drift LFO test with Elsi-style Liveliness macro.</div>
+      </div>
+      <div class="version">v1.5 · 2026-06-02<br />Liveliness macro test</div>
+    </header>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="button-row">
+          <button id="startStopBtn">Start</button>
+          <select id="targetSelect">
+            <option value="frequency">Target: frequency</option>
+            <option value="gain">Target: gain</option>
+            <option value="both">Target: both</option>
+          </select>
+        </div>
+
+        <div class="controls" id="controls"></div>
+
+        <div class="debug" id="debug">
+          <div>value: <span id="dbgValue">0.000</span></div>
+          <div>velocity: <span id="dbgVelocity">0.000</span></div>
+          <div>force: <span id="dbgForce">0.000</span></div>
+          <div>sineValue: <span id="dbgSine">0.000</span></div>
+          <div>freqValue: <span id="dbgOutput">0.000</span></div>
+          <div>ampValue delayed: <span id="dbgAmpValue">0.000</span></div>
+          <div>ampDelay s: <span id="dbgAmpDelay">0.00</span></div>
+          <div>freq Hz: <span id="dbgFreq">60.0</span></div>
+          <div>gain: <span id="dbgGain">0.000</span></div>
+          <div>eff pitch oct: <span id="dbgEffPitch">0.000</span></div>
+          <div>eff amp dB: <span id="dbgEffAmp">0.00</span></div>
+          <div>eff speed: <span id="dbgEffSpeed">0.00</span></div>
+          <div>running: <span id="dbgRunning">false</span></div>
+        </div>
+
+        <div class="note">
+          Liveliness is a user-level macro. It scales drift speed, pitch depth, amplitude depth and motion depth together. Tech sliders define the maximum ranges used by the macro.
+        </div>
+      </div>
+
+      <div class="panel plots">
+        <div class="plot-card">
+          <div class="plot-title"><span>1. output value</span><span>-1..+1</span></div>
+          <canvas id="plotOutput" width="900" height="160"></canvas>
+        </div>
+        <div class="plot-card">
+          <div class="plot-title"><span>2. velocity</span><span>internal state</span></div>
+          <canvas id="plotVelocity" width="900" height="160"></canvas>
+        </div>
+        <div class="plot-card">
+          <div class="plot-title"><span>3. random force</span><span>smoothed noise</span></div>
+          <canvas id="plotForce" width="900" height="160"></canvas>
+        </div>
+        <div class="plot-card">
+          <div class="plot-title"><span>4. modulated parameter</span><span>frequency Hz / gain</span></div>
+          <canvas id="plotModulated" width="900" height="160"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const state = {
+      audioCtx: null,
+      osc: null,
+      masterGain: null,
+      isRunning: false,
+      lastTime: performance.now(),
+      simAccumulator: 0,
+      sinePhase: 0,
+      value: 0,
+      velocity: 0,
+      randomForce: 0,
+      force: 0,
+      sineValue: 0,
+      outputValue: 0,
+      currentFrequencyHz: 60,
+      currentGain: 0,
+      effectiveLiveliness: 0,
+      effectiveFreqDepthOct: 0,
+      effectiveAmpDepthDb: 0,
+      effectiveSpeed: 0,
+      ampValue: 0,
+      ampDelaySec: 0.8,
+      delayValue: 0,
+      delayVelocity: 0,
+      delayRandomForce: 0,
+      simTimeSec: 0,
+      driftHistory: [],
+      targetMode: "frequency",
+      historyLength: 700,
+      history: {
+        output: [],
+        velocity: [],
+        force: [],
+        modulated: []
+      }
+    };
+
+    const params = {
+      baseFrequencyHz: 60,
+      masterVolume: 0.35,
+      liveliness: 0.55,
+      motionDepth: 0.75,
+      motionSpeed: 0.8,
+      damping: 0.95,
+      centerForce: 1.15,
+      randomForceAmount: 1.15,
+      sineMix: 0.08,
+      sinePeriodSec: 12,
+      freqDepthOct: 0.18,
+      ampDepthDb: 2.5,
+      ampDelaySecFixed: 0.8,
+      useVariableAmpDelay: 0,
+      ampDelayMinSec: 0.1,
+      ampDelayMaxSec: 3.0,
+      ampDelayDriftSpeed: 0.22,
+      ampDelayBiasPower: 2.5,
+      simulationHz: 10
+    };
+
+    const sliderDefs = [
+      ["section", "Audio"],
+      ["baseFrequencyHz", "Base frequency", 30, 140, 60, 1, "Hz"],
+      ["masterVolume", "Master volume", 0, 1, 0.35, 0.01, ""],
+
+      ["section", "User macro"],
+      ["liveliness", "Liveliness", 0, 1, 0.55, 0.01, ""],
+
+      ["section", "Elsi tech drift limits"],
+      ["motionDepth", "Max organic drift", 0, 1.5, 0.75, 0.01, ""],
+      ["freqDepthOct", "Max pitch drift", 0, 0.5, 0.5, 0.01, " oct"],
+      ["ampDepthDb", "Max amp drift", 0, 6, 6, 0.1, " dB"],
+      ["ampDelaySecFixed", "Amp delay", 0.1, 3.0, 0.8, 0.1, "s"],
+      ["motionSpeed", "Drift speed", 0.1, 3, 0.8, 0.01, "x"],
+      ["damping", "Drift damping", 0.05, 3, 0.95, 0.01, ""],
+      ["randomForceAmount", "Drift randomness", 0, 3, 1.15, 0.01, ""],
+
+      ["section", "Advanced motion shaping"],
+      ["centerForce", "Center force", 0, 4, 1.15, 0.01, ""],
+      ["sineMix", "Sine mix", 0, 0.5, 0.08, 0.01, ""],
+      ["sinePeriodSec", "Sine period", 4, 60, 12, 1, "s"],
+      ["simulationHz", "Update rate", 1, 60, 10, 1, "Hz"],
+
+      ["section", "Advanced variable delay test"],
+      ["useVariableAmpDelay", "Variable amp delay", 0, 1, 0, 1, ""],
+      ["ampDelayMinSec", "Amp delay min", 0, 3, 0.1, 0.1, "s"],
+      ["ampDelayMaxSec", "Amp delay max", 0.1, 6, 3.0, 0.1, "s"],
+      ["ampDelayDriftSpeed", "Amp delay drift speed", 0.02, 1.5, 0.22, 0.01, "x"],
+      ["ampDelayBiasPower", "Amp delay bias", 1, 6, 2.5, 0.1, " pow"]
+    ];
+
+    const $ = (id) => document.getElementById(id);
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function updateEffectiveMacro() {
+      // Liveliness is the future user-facing control. Tech sliders set the maximum range.
+      const l = clamp(params.liveliness, 0, 1);
+      const shaped = l * l;
+
+      state.effectiveLiveliness = l;
+      state.effectiveSpeed = (0.35 + l * 1.65) * params.motionSpeed;
+      state.effectiveFreqDepthOct = params.freqDepthOct * shaped;
+      state.effectiveAmpDepthDb = params.ampDepthDb * shaped;
+      state.effectiveMotionDepth = params.motionDepth * (0.20 + 0.80 * l);
+    }
+
+    function createSlider(def) {
+      if (def[0] === "section") {
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = def[1];
+        return title;
+      }
+
+      const [key, label, min, max, value, step, unit] = def;
+      params[key] = value;
+
+      const row = document.createElement("div");
+      row.className = "row";
+
+      const labelEl = document.createElement("label");
+      labelEl.textContent = label;
+      labelEl.setAttribute("for", key);
+
+      const input = document.createElement("input");
+      input.type = "range";
+      input.id = key;
+      input.min = min;
+      input.max = max;
+      input.step = step;
+      input.value = value;
+
+      const valueEl = document.createElement("div");
+      valueEl.id = `${key}Value`;
+      valueEl.textContent = formatSliderValue(key, value, unit);
+
+      input.addEventListener("input", () => {
+        params[key] = Number(input.value);
+        valueEl.textContent = formatSliderValue(key, params[key], unit);
+        applyStaticAudioParams();
+      });
+
+      row.append(labelEl, input, valueEl);
+      return row;
+    }
+
+    function formatSliderValue(key, value, unit) {
+      if (key === "useVariableAmpDelay") return value === 1 ? "on" : "off";
+      const rounded = Math.abs(value) >= 10 ? value.toFixed(0) : value.toFixed(2);
+      return `${rounded}${unit}`;
+    }
+
+    function initControls() {
+      const container = $("controls");
+      sliderDefs.forEach((def) => container.appendChild(createSlider(def)));
+
+      $("targetSelect").addEventListener("change", (event) => {
+        state.targetMode = event.target.value;
+      });
+
+      $("startStopBtn").addEventListener("click", () => {
+        if (state.isRunning) stopAudio();
+        else startAudio();
+      });
+    }
+
+    function startAudio() {
+      if (!state.audioCtx) {
+        state.audioCtx = new AudioContext();
+      }
+
+      if (state.audioCtx.state === "suspended") {
+        state.audioCtx.resume();
+      }
+
+      state.osc = state.audioCtx.createOscillator();
+      state.masterGain = state.audioCtx.createGain();
+
+      state.osc.type = "sine";
+      state.osc.frequency.value = params.baseFrequencyHz;
+      state.masterGain.gain.value = 0;
+
+      state.osc.connect(state.masterGain).connect(state.audioCtx.destination);
+      state.osc.start();
+
+      state.isRunning = true;
+      $("startStopBtn").textContent = "Stop";
+      $("startStopBtn").classList.add("running");
+      applyStaticAudioParams();
+    }
+
+    function stopAudio() {
+      if (!state.audioCtx || !state.osc || !state.masterGain) return;
+
+      const now = state.audioCtx.currentTime;
+      state.masterGain.gain.cancelScheduledValues(now);
+      state.masterGain.gain.setTargetAtTime(0, now, 0.08);
+
+      const oscToStop = state.osc;
+      setTimeout(() => {
+        try { oscToStop.stop(); } catch (error) {}
+        try { oscToStop.disconnect(); } catch (error) {}
+      }, 350);
+
+      state.osc = null;
+      state.masterGain = null;
+      state.isRunning = false;
+      $("startStopBtn").textContent = "Start";
+      $("startStopBtn").classList.remove("running");
+    }
+
+    function applyStaticAudioParams() {
+      if (!state.audioCtx || !state.masterGain) return;
+
+      const now = state.audioCtx.currentTime;
+      const safeGain = clamp(state.currentGain * params.masterVolume, 0, 1);
+      state.masterGain.gain.setTargetAtTime(safeGain, now, 0.035);
+    }
+
+    function stepOrganicMotion(dt) {
+      updateEffectiveMacro();
+      const speed = state.effectiveSpeed;
+      const scaledDt = dt * speed;
+
+      // Low-pass random noise to avoid hard sample-to-sample jumps.
+      const noiseTarget = (Math.random() * 2 - 1) * params.randomForceAmount;
+      const randomFollow = clamp(scaledDt * 4.0, 0, 1);
+      state.randomForce += (noiseTarget - state.randomForce) * randomFollow;
+
+      // Spring-mass-damper model: force pulls value back toward center and damps velocity.
+      const center = -state.value * params.centerForce;
+      const damping = -state.velocity * params.damping;
+      const force = state.randomForce + center + damping;
+
+      state.velocity += force * scaledDt;
+      state.value += state.velocity * scaledDt;
+
+      // Soft clamp keeps value bounded without abruptly zeroing velocity.
+      if (state.value > 1) {
+        state.value = 1;
+        state.velocity *= -0.25;
+      } else if (state.value < -1) {
+        state.value = -1;
+        state.velocity *= -0.25;
+      }
+
+      state.sinePhase += dt / Math.max(0.001, params.sinePeriodSec) * Math.PI * 2;
+      if (state.sinePhase > Math.PI * 2) state.sinePhase -= Math.PI * 2;
+
+      const sineValue = Math.sin(state.sinePhase);
+      const driftMix = 1 - params.sineMix;
+      const mixed = state.value * driftMix + sineValue * params.sineMix;
+      state.outputValue = clamp(mixed * state.effectiveMotionDepth, -1, 1);
+      state.sineValue = sineValue;
+      state.force = force;
+
+      updateDelayDrift(dt);
+      storeDriftSample(state.simTimeSec, state.outputValue);
+    }
+
+    function updateDelayDrift(dt) {
+      // A very slow secondary drift changes only the amplitude delay time.
+      const scaledDt = dt * params.ampDelayDriftSpeed;
+      const noiseTarget = Math.random() * 2 - 1;
+      const follow = clamp(scaledDt * 2.0, 0, 1);
+      state.delayRandomForce += (noiseTarget - state.delayRandomForce) * follow;
+
+      const center = -state.delayValue * 0.35;
+      const damping = -state.delayVelocity * 1.1;
+      const force = state.delayRandomForce * 0.7 + center + damping;
+
+      state.delayVelocity += force * scaledDt;
+      state.delayValue += state.delayVelocity * scaledDt;
+      state.delayValue = clamp(state.delayValue, -1, 1);
+
+      if (params.useVariableAmpDelay < 0.5) {
+        // Default Elsi test path: fixed delay is simpler and more predictable.
+        state.ampDelaySec = clamp(params.ampDelaySecFixed, 0.1, 3.0);
+        return;
+      }
+
+      const minDelay = Math.min(params.ampDelayMinSec, params.ampDelayMaxSec);
+      const maxDelay = Math.max(params.ampDelayMinSec, params.ampDelayMaxSec);
+
+      // Optional experiment: bias delay toward the minimum, with occasional longer reads.
+      const rawDelay01 = clamp((state.delayValue + 1) * 0.5, 0, 1);
+      const biasPower = Math.max(1, params.ampDelayBiasPower);
+      const biasedDelay01 = Math.pow(rawDelay01, biasPower);
+      state.ampDelaySec = minDelay + biasedDelay01 * (maxDelay - minDelay);
+    }
+
+    function storeDriftSample(timeSec, value) {
+      // Keep just enough history for the delayed amplitude read.
+      state.driftHistory.push({ timeSec, value });
+      const keepAfter = timeSec - Math.max(6, params.ampDelayMaxSec + 1);
+      while (state.driftHistory.length > 2 && state.driftHistory[0].timeSec < keepAfter) {
+        state.driftHistory.shift();
+      }
+    }
+
+    function readDelayedDrift(targetTimeSec) {
+      const h = state.driftHistory;
+      if (h.length === 0) return state.outputValue;
+      if (targetTimeSec <= h[0].timeSec) return h[0].value;
+
+      for (let i = h.length - 1; i > 0; i--) {
+        const a = h[i - 1];
+        const b = h[i];
+        if (a.timeSec <= targetTimeSec && targetTimeSec <= b.timeSec) {
+          const t = (targetTimeSec - a.timeSec) / Math.max(0.0001, b.timeSec - a.timeSec);
+          return a.value + (b.value - a.value) * t;
+        }
+      }
+      return h[h.length - 1].value;
+    }
+
+    function updateModulatedAudio() {
+      const base = params.baseFrequencyHz;
+      const freqValue = state.outputValue;
+      const ampValue = readDelayedDrift(state.simTimeSec - state.ampDelaySec);
+      state.ampValue = ampValue;
+
+      // Octave-based FM keeps the range musical and bounded around the base frequency.
+      const frequency = clamp(base * Math.pow(2, freqValue * state.effectiveFreqDepthOct), 20, 220);
+
+      // dB amplitude modulation avoids hard linear tremolo.
+      const baseGain = 0.55;
+      const gain = clamp(baseGain * Math.pow(10, ampValue * state.effectiveAmpDepthDb / 20), 0.01, 1.0);
+
+      if (state.targetMode === "frequency") {
+        state.currentFrequencyHz = frequency;
+        state.currentGain = baseGain;
+      } else if (state.targetMode === "gain") {
+        state.currentFrequencyHz = base;
+        state.currentGain = gain;
+      } else {
+        state.currentFrequencyHz = frequency;
+        state.currentGain = gain;
+      }
+
+      if (!state.audioCtx || !state.osc || !state.masterGain) return;
+
+      const now = state.audioCtx.currentTime;
+      state.osc.frequency.setTargetAtTime(state.currentFrequencyHz, now, 0.015);
+      state.masterGain.gain.setTargetAtTime(state.currentGain * params.masterVolume, now, 0.04);
+    }
+
+    function pushHistory(key, value) {
+      const list = state.history[key];
+      list.push(value);
+      if (list.length > state.historyLength) list.shift();
+    }
+
+    function updateHistory() {
+      pushHistory("output", state.outputValue);
+      pushHistory("velocity", clamp(state.velocity / 2, -1, 1));
+      pushHistory("force", clamp(state.randomForce / 3, -1, 1));
+
+      const modulated = state.targetMode === "gain"
+        ? state.ampValue
+        : state.targetMode === "frequency"
+          ? state.outputValue
+          : (state.outputValue + state.ampValue) * 0.5;
+      pushHistory("modulated", clamp(modulated, -1, 1));
+    }
+
+    function drawPlot(canvasId, values, zeroLine = true) {
+      const canvas = $(canvasId);
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#0b0d0f";
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.25);
+      ctx.lineTo(w, h * 0.25);
+      ctx.moveTo(0, h * 0.75);
+      ctx.lineTo(w, h * 0.75);
+      if (zeroLine) {
+        ctx.moveTo(0, h * 0.5);
+        ctx.lineTo(w, h * 0.5);
+      }
+      ctx.stroke();
+
+      if (values.length < 2) return;
+
+      ctx.strokeStyle = "#e6c15a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      values.forEach((v, i) => {
+        const x = (i / (state.historyLength - 1)) * w;
+        const y = h * 0.5 - clamp(v, -1, 1) * h * 0.42;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function drawAllPlots() {
+      drawPlot("plotOutput", state.history.output);
+      drawPlot("plotVelocity", state.history.velocity);
+      drawPlot("plotForce", state.history.force);
+      drawPlot("plotModulated", state.history.modulated);
+    }
+
+    function safeFixed(value, digits) {
+      // Prevent debug readout from breaking the animation before all values exist.
+      return Number.isFinite(value) ? value.toFixed(digits) : "0".padEnd(digits + 2, "0");
+    }
+
+    function updateDebug() {
+      $("dbgValue").textContent = safeFixed(state.value, 3);
+      $("dbgVelocity").textContent = safeFixed(state.velocity, 3);
+      $("dbgForce").textContent = safeFixed(state.force, 3);
+      $("dbgSine").textContent = safeFixed(state.sineValue, 3);
+      $("dbgOutput").textContent = safeFixed(state.outputValue, 3);
+      $("dbgAmpValue").textContent = safeFixed(state.ampValue, 3);
+      $("dbgAmpDelay").textContent = safeFixed(state.ampDelaySec, 2);
+      $("dbgFreq").textContent = safeFixed(state.currentFrequencyHz, 1);
+      $("dbgGain").textContent = safeFixed(state.currentGain, 3);
+      $("dbgEffPitch").textContent = safeFixed(state.effectiveFreqDepthOct, 3);
+      $("dbgEffAmp").textContent = safeFixed(state.effectiveAmpDepthDb, 2);
+      $("dbgEffSpeed").textContent = safeFixed(state.effectiveSpeed, 2);
+      $("dbgRunning").textContent = String(state.isRunning);
+    }
+
+    function animationLoop(nowMs) {
+      const dt = Math.min(0.05, (nowMs - state.lastTime) / 1000);
+      state.lastTime = nowMs;
+      state.simAccumulator += dt;
+
+      const simStep = 1 / Math.max(1, params.simulationHz);
+      let safetyCounter = 0;
+
+      while (state.simAccumulator >= simStep && safetyCounter < 12) {
+        state.simTimeSec += simStep;
+        stepOrganicMotion(simStep);
+        updateModulatedAudio();
+        updateHistory();
+        state.simAccumulator -= simStep;
+        safetyCounter++;
+      }
+
+      drawAllPlots();
+      updateDebug();
+      requestAnimationFrame(animationLoop);
+    }
+
+    initControls();
+    requestAnimationFrame(animationLoop);
+  </script>
+</body>
+</html>
