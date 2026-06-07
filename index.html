@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sleep Elsi v4.0</title>
+  <title>Sleep Elsi v4.2</title>
   <style>
     :root {
       color-scheme: dark;
@@ -639,7 +639,8 @@
       stroke: rgba(239,232,218,0.94);
     }
     .volume-bar-hint {
-      margin: -2px 0 0;
+      display: none;
+      margin: 0;
       color: rgba(184,173,155,0.72);
       font-size: 11px;
       text-align: center;
@@ -655,7 +656,12 @@
       max-height: 2600px;
       opacity: 1;
       transform: translateY(0);
-      transition: max-height 560ms ease, opacity 360ms ease, transform 560ms ease, padding 560ms ease, margin 560ms ease, border-color 560ms ease;
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at top, rgba(216,182,106,0.070), transparent 32rem),
+        rgba(12,12,11,0.18);
+      transition: max-height 560ms ease, opacity 360ms ease, transform 560ms ease, padding 560ms ease, margin 560ms ease, border-color 560ms ease, background 560ms ease;
     }
     #technicalSection.technical-section.is-hidden {
       display: block;
@@ -666,6 +672,7 @@
       padding-bottom: 0;
       margin-top: -6px;
       border-color: rgba(255,255,255,0.00);
+      background: transparent;
       pointer-events: none;
     }
     .preset-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
@@ -789,17 +796,24 @@
         padding: 10px;
         border-radius: 16px;
       }
-      .volume-card { min-height: 166px; }
+      .volume-card { min-height: 142px; }
       .transport-inline {
-        min-height: 88px;
+        min-height: 118px;
         padding-bottom: 0;
       }
-      .control-visual-layer { grid-template-rows: 28px 58px 14px; }
+      .control-visual-layer {
+        position: relative;
+        grid-template-rows: 28px 58px 32px;
+      }
       .transport-label-row { min-height: 28px; }
       .transport-symbol-row { min-height: 58px; }
       .transport-stable-status-row {
-        min-height: 14px;
-        margin-top: -10px;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 82px;
+        min-height: 24px;
+        margin-top: 0;
       }
       .control-symbol {
         min-height: 58px;
@@ -808,39 +822,60 @@
       .transport-status { font-size: clamp(20px, 6.4vw, 28px); }
       .transport-stable-status { font-size: 9px; }
       .volume-bar {
-        min-height: 96px;
-        margin-top: -8px;
+        min-height: 58px;
+        margin-top: -34px;
       }
-      .volume-segments { height: 96px; }
-      .volume-bar-hint {
-        margin-top: -12px;
-        font-size: 9px;
+      .volume-segments { height: 58px; }
+      #volumeHint,
+      .volume-bar-hint { display: none !important; }
+      #distanceCard {
+        padding-top: 4px;
+        padding-bottom: 4px;
+        gap: 4px;
       }
       #distanceCard > strong {
-        min-height: 26px;
-        font-size: 24px;
+        min-height: 16px;
+        font-size: 16px;
+        opacity: 0.76;
       }
-      .scene-family-row,
-      .scene-family-row button { min-height: 42px; }
-      .technical-toggle { margin-top: -2px; }
-      #technicalSection.technical-section {
-        padding: 0;
-        border: 0;
+      .sound-mode-grid { gap: 0; }
+      .scene-family-row {
+        min-height: 30px;
+        border-width: 0 0 1px 0;
+        border-radius: 0;
         background: transparent;
         box-shadow: none;
+      }
+      .scene-family-row:first-child { border-top: 1px solid rgba(255,255,255,0.12); }
+      .scene-family-row:last-child { border-bottom: 1px solid rgba(255,255,255,0.12); }
+      .scene-family-row::before { inset-block: 5px; border-radius: 999px; }
+      .scene-family-row button {
+        min-height: 30px;
+        font-size: 11px;
+        padding: 0 4px;
+      }
+      .technical-toggle { margin-top: -2px; }
+      #technicalSection.technical-section {
+        padding: 8px;
+        border: 1px solid rgba(216,182,106,0.11);
+        border-radius: 16px;
+        background:
+          radial-gradient(circle at top, rgba(216,182,106,0.11), transparent 16rem),
+          linear-gradient(180deg, rgba(42,34,18,0.24), rgba(8,10,12,0.38));
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.025);
       }
       #technicalSection.technical-section.is-hidden {
         padding: 0;
         margin-top: -6px;
       }
       .control-groups {
-        margin: 8px 0;
-        gap: 10px;
+        margin: 6px 0;
+        gap: 8px;
       }
       .control-group {
-        padding: 9px;
-        border-radius: 15px;
-        gap: 9px;
+        padding: 7px;
+        border-radius: 13px;
+        gap: 7px;
       }
       .control-group-title { font-size: 12px; }
       .control-group-note,
@@ -876,30 +911,44 @@
         width: 100%;
       }
       .advanced-controls {
-        gap: 8px;
-        font-size: 10px;
+        gap: 3px;
+        font-size: 7px;
       }
+      .advanced-controls .technical-info {
+        gap: 2px;
+        margin-bottom: 2px;
+      }
+      .advanced-controls .technical-info .note { display: none; }
       .advanced-controls .control-group {
-        padding: 7px;
-        gap: 7px;
+        padding: 3px;
+        gap: 3px;
+        border-radius: 8px;
       }
-      .advanced-controls .control-group-title { font-size: 10px; }
+      .advanced-controls .control-grid { gap: 3px; }
+      .advanced-controls .control-group-title { font-size: 7px; letter-spacing: 0.02em; }
       .advanced-controls .control-group-note,
       .advanced-controls .technical-info,
-      .advanced-controls .note,
-      .advanced-controls .status { font-size: 9px; line-height: 1.22; }
+      .advanced-controls .status,
+      .advanced-controls .version { font-size: 6.8px; line-height: 1.08; }
       .advanced-controls label.control {
-        padding: 6px;
-        gap: 4px 6px;
+        padding: 3px 4px;
+        gap: 1px 4px;
+        border-radius: 7px;
       }
-      .advanced-controls label.control span:first-child { font-size: 10px; }
-      .advanced-controls output { font-size: 9px; max-width: 42vw; }
-      .loop-subgroups { gap: 7px; }
+      .advanced-controls label.control span:first-child { font-size: 7px; line-height: 1.0; }
+      .advanced-controls output { font-size: 6.8px; max-width: 35vw; }
+      .advanced-controls input[type="range"] { height: 10px; margin: 0; }
+      .advanced-controls input[type="range"]::-webkit-slider-runnable-track { height: 3px; }
+      .advanced-controls input[type="range"]::-webkit-slider-thumb { width: 12px; height: 12px; margin-top: -4px; }
+      .advanced-controls input[type="range"]::-moz-range-track { height: 3px; }
+      .advanced-controls input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; }
+      .loop-subgroups { gap: 3px; }
       .loop-subgroup {
-        padding: 6px;
-        border-radius: 12px;
+        padding: 3px;
+        border-radius: 7px;
+        gap: 3px;
       }
-      .loop-subgroup-title { font-size: 9px; }
+      .loop-subgroup-title { font-size: 6.8px; letter-spacing: 0.02em; }
       .preset-actions {
         grid-template-columns: minmax(0, 1fr);
         gap: 8px;
@@ -914,12 +963,127 @@
         font-size: 10px;
       }
     }
+
+
+    /* v4.2 mobile layout fixes: Controls mode, Advanced sizing, volume width */
+    #technicalSection.technical-section {
+      border: 1px solid rgba(216,182,106,0.24);
+      background:
+        radial-gradient(circle at top, rgba(216,182,106,0.16), transparent 30rem),
+        linear-gradient(180deg, rgba(54,43,20,0.34), rgba(14,15,13,0.52));
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.035),
+        0 14px 44px rgba(0,0,0,0.18);
+    }
+
+    .volume-bar,
+    .volume-segments {
+      width: 100%;
+      max-width: none;
+    }
+
+    @media (max-width: 920px) and (orientation: landscape) {
+      .scene-grid { grid-template-columns: 1fr; }
+      .volume-card { width: 100%; }
+      .volume-bar { width: 100%; min-height: 82px; margin-top: -22px; }
+      .volume-segments { width: 100%; height: 82px; }
+    }
+
+    @media (max-width: 620px), (max-width: 920px) and (orientation: landscape) {
+      #technicalSection.technical-section {
+        padding: 8px;
+        border: 1px solid rgba(216,182,106,0.28);
+        border-radius: 16px;
+        background:
+          radial-gradient(circle at top, rgba(216,182,106,0.18), transparent 18rem),
+          linear-gradient(180deg, rgba(58,44,19,0.42), rgba(13,14,12,0.58));
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.04),
+          0 12px 38px rgba(0,0,0,0.22);
+      }
+
+      /* Advanced uses the same compact control geometry as Controls on mobile. */
+      .advanced-controls {
+        gap: 8px;
+        font-size: inherit;
+      }
+      .advanced-controls .technical-info {
+        gap: 4px;
+        margin-bottom: 6px;
+        font-size: 11px;
+        line-height: 1.25;
+      }
+      .advanced-controls .technical-info .note { display: none; }
+      .advanced-controls .control-group {
+        padding: 7px;
+        border-radius: 13px;
+        gap: 7px;
+      }
+      .advanced-controls .control-group-title {
+        font-size: 12px;
+        letter-spacing: 0.04em;
+      }
+      .advanced-controls .control-group-note,
+      .advanced-controls .status,
+      .advanced-controls .version {
+        font-size: 11px;
+        line-height: 1.25;
+      }
+      .advanced-controls .control-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+      }
+      .advanced-controls label.control {
+        min-width: 0;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 5px 8px;
+        padding: 8px;
+        border-radius: 13px;
+      }
+      .advanced-controls label.control span:first-child {
+        min-width: 0;
+        font-size: 12px;
+        line-height: 1.15;
+      }
+      .advanced-controls output {
+        min-width: 0;
+        max-width: 46vw;
+        font-size: 11px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .advanced-controls input[type="range"] {
+        min-width: 0;
+        width: 100%;
+        height: auto;
+        margin: 0;
+      }
+      .advanced-controls .loop-subgroups {
+        gap: 8px;
+      }
+      .advanced-controls .loop-subgroup {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        gap: 8px;
+      }
+      .advanced-controls .loop-subgroup-title {
+        margin-top: 2px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(255,255,255,0.09);
+        font-size: 11px;
+        line-height: 1.15;
+      }
+    }
+
   </style>
 </head>
 <body>
 <main>
   <header>
-    <h1>Elsi</h1>
+    <h1>Sleep Elsi</h1>
   </header>
 
   <section class="user-note" aria-label="User note">
@@ -992,7 +1156,7 @@
         </div>
       </div>
     </div>
-    <button id="technicalToggleBtn" class="technical-toggle" type="button">Tech</button>
+    <button id="technicalToggleBtn" class="technical-toggle" type="button">Controls</button>
   </section>
 
   <section id="technicalSection" class="technical-section is-hidden">
@@ -1054,7 +1218,7 @@
       <button id="advancedToggleBtn" class="advanced-toggle" type="button">Advanced</button>
       <div id="advancedControls" class="advanced-controls is-hidden">
         <div class="technical-info">
-          <div class="version">v4.0 · mobile layout, advanced slide, raised Hum/Vibro loop test levels</div>
+          <div class="version">v4.2 · mobile layout, advanced slide, raised Hum/Vibro loop test levels</div>
           <div id="status" class="status">Ready. Uses asset loops when available, otherwise generates a soft vibro loop source in the browser.</div>
           <div id="wakeLockStatus" class="status">Wake Lock: not requested</div>
           <div class="note">If no asset loop is available, the browser generates a soft vibroacoustic loop source for testing.</div>
@@ -1235,7 +1399,7 @@
   </section>
 
   <footer class="app-footer">
-    <span class="app-footer-version">v4.0 · mobile layout and preset tuning</span>
+    <span class="app-footer-version">v4.2 · mobile layout and preset tuning</span>
     <span class="app-footer-credit">JukkaTLinjama 2026</span>
   </footer>
 </main>
@@ -1244,7 +1408,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "elsi-sleep-sound-app-v4.0";
+  const VERSION = "elsi-sleep-sound-app-v4.2";
   const DEFAULT_LOOP_SOURCE_URL = "assets/vacuum-loop.wav";
   const DEFAULT_HUM_LOOP_SOURCE_URL = "assets/hum.wav";
   const DEFAULT_VIBRO_LOOP_SOURCE_URL = "assets/vibro.wav";
@@ -2318,7 +2482,7 @@
   function updateTechnicalUi() {
     if (ui.technicalSection) ui.technicalSection.classList.toggle("is-hidden", !state.isTechnicalVisible);
     if (ui.debugSection) ui.debugSection.classList.toggle("is-hidden", !state.isTechnicalVisible);
-    if (ui.technicalToggleBtn) ui.technicalToggleBtn.textContent = state.isTechnicalVisible ? "Hide tech" : "Tech";
+    if (ui.technicalToggleBtn) ui.technicalToggleBtn.textContent = state.isTechnicalVisible ? "Hide controls" : "Controls";
     updateAdvancedUi();
   }
 
@@ -2411,13 +2575,14 @@
   }
 
   function setVolumeFromPointerEvent(event) {
-    const target = ui.volumeCard || ui.volumeBar;
+    const target = ui.volumeBar || ui.volumeCard;
     if (!target) return;
     const rect = target.getBoundingClientRect();
-    // The whole card remains touchable, but horizontal mapping follows the
-    // visible SVG arc field. Outside this field the value simply clamps to 0/1.
-    const visualMinX = rect.left + rect.width * 0.10;
-    const visualMaxX = rect.left + rect.width * 0.90;
+    // v4.2: pointer mapping follows the same visual field as the SVG volume arcs.
+    // This prevents mobile landscape from showing a narrow arc field while the
+    // interaction/highlight logic spans a different width.
+    const visualMinX = rect.left;
+    const visualMaxX = rect.right;
     const value01 = (event.clientX - visualMinX) / Math.max(1, visualMaxX - visualMinX);
     setAppVolume01(value01);
   }
