@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sleep Elsi v5.4</title>
+  <title>Sleep Elsi v5.7</title>
   <style>
     /* ============================================================
        CSS · App shell and global tokens
@@ -941,11 +941,6 @@
       .volume-segments { width: 100%; height: 82px; }
     }
 
-    /* v4.3 Sound selector only: keep the compact segmented layout on narrow mobile and mobile landscape. */
-    @media (max-width: 620px), (max-width: 920px) and (orientation: landscape) {
-    }
-
-
     /* v5.2: removed redundant v4.4 Advanced mobile override block. */
 
 
@@ -1033,10 +1028,16 @@
 </head>
 <body>
 <main>
+  <!-- ============================================================
+       HTML · App header
+       ============================================================ -->
   <header>
     <h1>Sleep Elsi</h1>
   </header>
 
+  <!-- ============================================================
+       HTML · Intro / user guidance
+       ============================================================ -->
   <section class="user-note" aria-label="User note">
     <strong>Calm layered sound for sleep and relaxation.</strong><br />
     <span class="intro-short">Start the sound, choose a scene, and adjust the volume gently.</span>
@@ -1044,7 +1045,10 @@
     <span id="introMoreText" class="intro-more-text is-hidden">Vacuum or Hum for baby sleep, Vibro for low frequency sound massage. Works with any audio device, but is targeted for audio-tactile reproduction.</span>
   </section>
 
-  <section class="scene-panel" aria-label="Vacuum scenes">
+  <!-- ============================================================
+       HTML · Main controls and sound selector
+       ============================================================ -->
+  <section class="scene-panel" aria-label="Sleep sound scenes">
     <div class="scene-grid">
       <div class="scene-card volume-card" id="volumeCard">
         <div class="transport-inline" aria-label="Main sound controls">
@@ -1130,6 +1134,9 @@
     <button id="technicalToggleBtn" class="technical-toggle" type="button">Controls</button>
   </section>
 
+  <!-- ============================================================
+       HTML · Controls, Advanced and debug panels
+       ============================================================ -->
   <section id="technicalSection" class="technical-section is-hidden">
     <div id="controlSection" class="control-groups" aria-label="Runtime test controls">
       <div class="control-group" aria-label="Scene balance controls">
@@ -1189,7 +1196,7 @@
       <button id="advancedToggleBtn" class="advanced-toggle" type="button">Advanced</button>
       <div id="advancedControls" class="advanced-controls is-hidden">
         <div class="technical-info">
-          <div class="version">v5.4 · legacy comment audit and safety labels</div>
+          <div class="version">v5.7 · JS navigation cleanup</div>
           <div id="status" class="status">Ready. Uses asset loops when available, otherwise generates a soft vibro loop source in the browser.</div>
           <div id="wakeLockStatus" class="status">Wake Lock: not requested</div>
           <div class="note">If no asset loop is available, the browser generates a soft vibroacoustic loop source for testing.</div>
@@ -1369,20 +1376,45 @@
     </div>
   </section>
 
+  <!-- ============================================================
+       HTML · Footer
+       ============================================================ -->
   <footer class="app-footer">
-    <span class="app-footer-version">v5.4 · legacy comment audit and safety labels</span>
+    <span class="app-footer-version">v5.7 · JS navigation cleanup</span>
     <span class="app-footer-credit">JukkaTLinjama 2026</span>
   </footer>
 </main>
 
+<!-- ============================================================
+     JS · Single-file app script
+     ============================================================ -->
 <script>
 (() => {
   "use strict";
 
   /* ============================================================
-     JS · App constants and version
+     JS NAVIGATION MAP · v5.7
+     ============================================================
+     1. Version and constants
+     2. DOM references
+     3. Control keys and legacy aliases
+     4. Runtime constants
+     5. Scene presets and scene definitions
+     6. Loop voice architecture
+     7. Runtime state
+     8. Utilities and preset management
+     9. Controls, volume UI, and scene visuals
+    10. Audio graph and loop loading — AUDIO CRITICAL
+    11. Organic Drift modulation — AUDIO CRITICAL
+    12. Reversible transport state machine — AUDIO CRITICAL
+    13. Control update path and public API
+    14. UI sync, event bindings, and startup
      ============================================================ */
-  const VERSION = "elsi-sleep-sound-app-v5.4";
+
+  /* ============================================================
+     JS · Version and constants
+     ============================================================ */
+  const VERSION = "elsi-sleep-sound-app-v5.7";
   const DEFAULT_LOOP_SOURCE_URL = "assets/vacuum-loop.wav";
   const DEFAULT_HUM_LOOP_SOURCE_URL = "assets/hum.wav";
   const DEFAULT_VIBRO_LOOP_SOURCE_URL = "assets/vibro.wav";
@@ -1414,7 +1446,7 @@
   ]);
 
   /* ============================================================
-     JS · DOM references
+     JS · DOM references and UI lookup
      ============================================================ */
 
   // ============================================================
@@ -1871,7 +1903,7 @@
 
 
   /* ============================================================
-     JS · Runtime state
+     JS · Runtime state object
      ============================================================ */
 
   // ============================================================
@@ -2040,7 +2072,7 @@
   };
 
   /* ============================================================
-     JS · Small utilities and formatting helpers
+     JS · Utilities, formatting, and preset helpers
      ============================================================ */
 
   // ============================================================
@@ -2538,7 +2570,7 @@
     setStatus("Reset all scene defaults.");
   }
   /* ============================================================
-     JS · Controls and Advanced panel state
+     JS · Controls and Advanced panel visibility
      ============================================================ */
   function toggleTechnicalUi() {
     state.isTechnicalVisible = !state.isTechnicalVisible;
@@ -2977,7 +3009,7 @@
   }
 
   /* ============================================================
-     JS · Audio engine graph and source preparation
+     JS · Audio graph and loop source preparation — AUDIO CRITICAL
      ============================================================ */
 
   // ============================================================
@@ -3410,7 +3442,7 @@
 
 
   /* ============================================================
-     JS · Organic Drift modulation model
+     JS · Organic Drift modulation model — AUDIO CRITICAL
      ============================================================ */
 
   // ============================================================
@@ -4065,7 +4097,7 @@
   });
 
   /* ============================================================
-     JS · Reversible transport state machine
+     JS · Reversible transport state machine — AUDIO CRITICAL
      ============================================================ */
 
   // ============================================================
@@ -4311,7 +4343,7 @@
   }
 
   /* ============================================================
-     JS · Control updates, scene preset application and state sync
+     JS · Control update path, scene application, and state sync
      ============================================================ */
   // AUDIO CRITICAL: main control write path. Also accepts legacy API aliases.
   function updateControl(params = {}, rampSeconds = 0.08) {
@@ -4487,7 +4519,7 @@
   }
 
   /* ============================================================
-     JS · Public API
+     JS · Public API and compatibility aliases
      ============================================================ */
 
   // ============================================================
