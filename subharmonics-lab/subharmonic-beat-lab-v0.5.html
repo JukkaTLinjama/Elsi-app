@@ -1,0 +1,1632 @@
+<!--
+Subharmonic Beat Lab v0.5
+
+Research prototype
+
+Purpose:
+Explore pleasant low-frequency beat structures generated
+from subharmonic relationships.
+
+Author: Jukka Linjama
+Year: 2026
+-->
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>Subharmonic Beat Lab v0.5</title>
+    <style>
+        :root {
+            --gap: 10px;
+            --white-h: 110px;
+            --black-h: 70px;
+            --white-w: 1fr;
+            --radius: 12px;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            margin: 0;
+            padding: 16px;
+            background: #fafafa;
+            color: #111;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin: 0 0 10px 0;
+            font-weight: 650;
+        }
+
+        .row {
+            margin: 12px 0;
+        }
+
+        .controls {
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid #e6e6e6;
+            border-radius: 12px;
+        }
+
+        .control {
+            display: grid;
+            grid-template-columns: 160px 1fr auto;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .control input[type="range"] {
+            width: 100%;
+        }
+
+        .control select {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid #d0d0d0;
+            background: #fff;
+            font-size: 14px;
+        }
+        /* EN: Nested sub-controls (indentation under the main label). */
+        .panSub {
+        margin-left: 20px;
+        margin-top: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        }
+
+        .val {
+            font-variant-numeric: tabular-nums;
+            font-size: 13px;
+            opacity: 0.85;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        .btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 12px;
+            border: 1px solid #d0d0d0;
+            border-bottom-width: 3px;
+            border-radius: 12px;
+            background: #fff;
+            font-size: 14px;
+        }
+
+        button:active {
+            transform: translateY(1px);
+            border-bottom-width: 2px;
+        }
+
+        /* --- Loop status badge --- */
+        .status {
+            align-self: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid #d0d0d0;
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+            user-select: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.35; }
+            100% { opacity: 1; }
+        }
+
+        .status.idle { background: #f6f6f6; color: #333; }
+        .status.rec  { background: #ffe9e9; color: #8a0000; border-color: #f2b3b3; animation: pulse 1s infinite; }
+        .status.loop { background: #e9f2ff; color: #003a8a; border-color: #b3ccf2; }
+
+        /* --- Disabled control (mode-dependent) --- */
+        .control.disabled {
+            opacity: 0.35;
+        }
+        .control.disabled input,
+        .control.disabled select {
+            pointer-events: none;
+        }
+
+
+        /* --- Piano keyboard --- */
+        .kbdWrap {
+            margin-top: 14px;
+            padding: 14px;
+            background: #fff;
+            border: 1px solid #e6e6e6;
+            border-radius: 12px;
+            overflow: hidden;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .kbdTitle {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: baseline;
+            margin-bottom: 10px;
+            font-size: 13px;
+            opacity: 0.85;
+        }
+
+        .piano {                    /* 8 white keys => A0..A1 inclusive */
+            position: relative;
+            width: 100%;
+            height: var(--white-h);
+            display: grid;       
+            grid-template-columns: repeat(8, var(--white-w)); /* A B C D E F G A */
+            gap: 0;
+            border: 1px solid #ddd;
+            border-radius: var(--radius);
+            background: #f2f2f2;
+            overflow: hidden;
+        }
+
+        .whiteKey {
+            position: relative;
+            border-right: 1px solid #ddd;
+            background: linear-gradient(#ffffff, #f1f1f1);
+            height: var(--white-h);
+            padding: 0;
+            margin: 0;
+            border-radius: 0;
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+            border-right: 1px solid #ddd;
+            touch-action: none;
+        }
+
+        .whiteKey:last-child {
+            border-right: none;
+        }
+
+        .whiteKey.active {
+            background: linear-gradient(#f1f1f1, #e6e6e6);
+        }
+
+        .whiteKey .footer {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 8px;              /* keep inside the key so it won't be clipped */
+            text-align: center;
+            font-size: 11px;
+            opacity: 0.85;
+            pointer-events: none;
+            line-height: 1.05;
+        }
+        .whiteKey .footer .hz {
+            display: block;
+            font-size: 10px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .whiteKey .hz {
+            display: block;
+            font-variant-numeric: tabular-nums;
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .blackKey {
+            position: absolute;
+            top: 0;
+            width: calc(100% / 8 * 0.4);
+            height: var(--black-h);
+            background: linear-gradient(#3a3a3a, #111);
+            border: 1px solid #000;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            z-index: 10;
+            padding: 0;
+            touch-action: none;
+        }
+
+        .blackKey.active {
+            background: linear-gradient(#2a2a2a, #000);
+        }
+
+        .blackKey .label {
+            position: absolute;
+            left: 6px;
+            top: 6px;            /* ennen: bottom */
+            bottom: auto;
+            color: #fff;
+            font-size: 10px;
+            opacity: 0.9;
+            line-height: 1.1;
+        }
+
+        .blackKey .hz {
+            display: block;
+            font-variant-numeric: tabular-nums;
+            font-size: 10px;
+            opacity: 0.75;
+            margin-top: 3px;
+        }
+    
+        .tiny { font-size: 12px; opacity: 0.9; }
+        .hint { font-size: 12px; opacity: 0.75; margin-top: 6px; }
+
+        .miniBtn.active {
+            border-color: #8fbfff;
+            box-shadow: 0 0 0 1px rgba(143, 191, 255, 0.35), 0 0 16px rgba(143, 191, 255, 0.18);
+        }
+
+
+        /* --- Subharmonic Beat Lab dark theme --- */
+        body {
+            background: #090b10;
+            color: #f2f5fb;
+        }
+
+        .controls, .kbdWrap, .subLabPanel {
+            background: #111722;
+            border-color: #263247;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+        }
+
+        button, .control select, .control input[type="range"] {
+            color: #f2f5fb;
+        }
+
+        button, .control select {
+            background: #172033;
+            border-color: #33415c;
+        }
+
+        .control input[type="range"] {
+            accent-color: #8fb7ff;
+        }
+
+        .status.idle { background: #151b28; color: #d5def2; border-color: #33415c; }
+        .status.rec  { background: #331a1d; color: #ffb7bd; border-color: #7a333c; }
+        .status.loop { background: #13243a; color: #b9d5ff; border-color: #31527d; }
+
+        .piano {
+            border-color: #283449;
+            background: #141a26;
+        }
+
+        .whiteKey {
+            background: linear-gradient(#d8dde8, #aeb7c7);
+            border-right-color: #7e899b;
+            color: #111827;
+        }
+
+        .whiteKey.active {
+            background: linear-gradient(#f3f6fb, #cbd5e6);
+        }
+
+        .blackKey {
+            background: linear-gradient(#2b3242, #07090d);
+            border-color: #030407;
+        }
+
+        .blackKey.active {
+            background: linear-gradient(#46516a, #101522);
+        }
+
+        .subLabPanel {
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid #263247;
+            border-radius: 12px;
+        }
+
+        .subReadout {
+            padding: 12px;
+            border-radius: 12px;
+            background: #0b1018;
+            border: 1px solid #263247;
+            font-size: 13px;
+            line-height: 1.55;
+            font-variant-numeric: tabular-nums;
+            color: #d9e4f8;
+        }
+
+        .subReadout strong {
+            color: #ffffff;
+        }
+
+        .subReadout .warn {
+            color: #ffcc7a;
+            font-weight: 650;
+        }
+
+        .subReadout .ok {
+            color: #9fd3ff;
+        }
+
+        .miniBtn {
+            justify-self: start;
+            width: auto;
+        }
+
+</style>
+</head>
+
+<body>
+    <h1>Subharmonic Beat Lab v0.5</h1>
+
+    <div class="row controls">
+        <div class="btns">
+            <button id="startBtn" type="button">Rec loop</button>
+            <button id="playBtn" type="button">Play loop</button>
+            <button id="wavBtn" type="button">Render WAV</button>
+            <span id="loopStatus" class="status idle" aria-live="polite">IDLE</span>
+        </div>
+
+        <div class="control">
+            <label for="masterVol">Master Volume (0–1.0)</label>
+            <input id="masterVol" type="range" min="0" max="1" step="0.05" value="0.5" />
+            <span class="val" id="masterVal"></span>
+        </div>
+<div class="control">
+            <label for="glideS">Glide (s)</label>
+            <input id="glideS" type="range" min="0" max="5" step="0.05" value="0.2" />
+            <span class="val" id="glideVal"></span>
+        </div>
+    </div>
+
+    <div class="row subLabPanel" aria-label="Subharmonic Engine controls">
+        <div class="kbdTitle">
+            <div><strong>Subharmonic Beat Engine v0.3</strong></div>
+            <div>base/sub + stereo n-th-harmonic beat split</div>
+        </div>
+
+        <div class="control">
+            <label for="subRatio">Ratio selector</label>
+            <select id="subRatio">
+                <option value="1/2">1/2</option>
+                <option value="2/3" selected>2/3</option>
+                <option value="3/4">3/4</option>
+                <option value="2/5">2/5</option>
+                <option value="3/5">3/5</option>
+                <option value="4/5">4/5</option>
+                <option value="3/7">3/7</option>
+                <option value="4/7">4/7</option>
+                <option value="5/8">5/8</option>
+            </select>
+            <span class="val" id="subRatioVal"></span>
+        </div>
+
+        <div class="control">
+            <label for="subMode">Mode</label>
+            <select id="subMode">
+                <option value="pure">Pure harmonic</option>
+                <option value="beatTuned" selected>Beat tuned harmonic</option>
+            </select>
+            <span class="val" id="subModeVal"></span>
+        </div>
+
+        <div class="control">
+            <label for="subLevel">Sub level</label>
+            <input id="subLevel" type="range" min="0" max="0.5" step="0.01" value="0.25" />
+            <span class="val" id="subLevelVal"></span>
+        </div>
+
+        <div class="control">
+            <label for="beatPairLevel">Beat pair level</label>
+            <input id="beatPairLevel" type="range" min="0" max="0.5" step="0.01" value="0.35" />
+            <span class="val" id="beatPairLevelVal"></span>
+        </div>
+
+        <div class="control">
+            <label for="subBeatTargetHz">Beat target per side</label>
+            <input id="subBeatTargetHz" type="range" min="0" max="10" step="0.1" value="4" />
+            <span class="val" id="subBeatTargetVal"></span>
+        </div>
+
+        <div class="control">
+            <label>Ratio helper</label>
+            <button id="suggestRatioBtn" class="miniBtn" type="button">Auto ratio: OFF</button>
+            <span class="val" id="suggestRatioVal">manual</span>
+        </div>
+
+        <div id="subReadout" class="subReadout"></div>
+    </div>
+
+    <div class="row kbdWrap">
+        <div class="kbdTitle">
+        <div><strong>Range:</strong> A0–A1 (13 keys, + accidentals)</div>
+        <div><strong>Sound:</strong> base tone + subharmonic + target harmonic beat pair</div>
+        </div>
+
+        <div id="piano" class="piano" aria-label="Virtual piano keyboard"></div>
+
+        <div class="hint">
+            Touch/hold a key to play. Slide to another key for glides. Output is intentionally low-frequency; keep
+            volume conservative.
+        </div>
+    </div>
+
+    <script src="./js/sineGenerator.js"></script>
+
+    <script>
+        // EN: Fallback generator for standalone previews where ./js/sineGenerator.js is not available.
+        if (typeof window.createSineGenerator !== "function") {
+            window.createSineGenerator = function createSineGenerator(ctx, state, now, helpers) {
+                const delayR = ctx.createDelay(0.2);
+                delayR.delayTime.value = 0;
+
+                const oscL = ctx.createOscillator();
+                const oscR = ctx.createOscillator();
+                oscL.type = "sine";
+                oscR.type = "sine";
+
+                const gainL = ctx.createGain();
+                const gainR = ctx.createGain();
+                gainL.gain.value = 0.9;
+                gainR.gain.value = 0.9;
+
+                const merger = ctx.createChannelMerger(2);
+                oscL.connect(gainL);
+                gainL.connect(merger, 0, 0);
+                oscR.connect(gainR);
+                gainR.connect(delayR);
+                delayR.connect(merger, 0, 1);
+                function update(glide = true) {
+                    const baseHz = Math.max(0.001, Number(state.baseHz) || 0.001);
+                    const g = glide ? state.glideS : 0;
+                    helpers.setParamSmooth(oscL.frequency, baseHz, g);
+                    helpers.setParamSmooth(oscR.frequency, baseHz, g);
+                    delayR.delayTime.setValueAtTime(0, now());
+                }
+
+                return {
+                    merger,
+                    delayR,
+                    _oscL: oscL,
+                    _oscR: oscR,
+                    update,
+                    start() { oscL.start(); oscR.start(); },
+                    stop(t) {
+                        try { oscL.stop(t); } catch (_) {}
+                        try { oscR.stop(t); } catch (_) {}
+                    }
+                };
+            };
+        }
+    </script>
+
+    <script>
+        // ============================================================================
+        // Application State
+        //
+        // Stores the current synthesis, transport, and subharmonic parameters.
+        // UI controls write to this state; audio functions read from it.
+        // ============================================================================
+        let ctx, oscL, oscR, gainL, gainR, delayR, merger, masterGain, gateGain;
+        let gen = null; // EN: Current source generator instance (live AudioContext).
+        let subSource = null; // EN: Parallel subharmonic sine source.
+
+        const state = {
+            running: false,
+            glideS: 0.2,       // seconds for frequency glides (portamento)
+            masterVol: 0.5,
+            baseHz: 27.5,
+
+            // EN: Subharmonic Beat Engine v0.3 state.
+            subRatio: "2/3",
+            subMode: "beatTuned",
+            subLevel: 0.25,
+            beatPairLevel: 0.35,
+            subBeatTargetHz: 4.0,
+        };
+
+
+
+        // ============================================================================
+        // Subharmonic Beat Engine
+        //
+        // Computes the subharmonic frequency from a harmonic ratio, optionally
+        // tunes it toward a target beat frequency, and selects playable ratios.
+        // This section contains calculation logic and no direct UI event handling.
+        // ============================================================================
+
+        // ----------------------------------------------------------------------------
+        // Ratio and beat calculations
+        // ----------------------------------------------------------------------------
+        const SUB_MIN_FREQ_HZ = 10.0;
+        const SUB_MAX_FREQ_HZ = 80.0;
+        const SUB_RATIO_OPTIONS = ["1/2", "2/3", "3/4", "2/5", "3/5", "4/5", "3/7", "4/7", "5/8"];
+
+        const subharmonicEngine = {
+            parseRatio(ratioText) {
+                const [mRaw, nRaw] = String(ratioText || "1/2").split("/");
+                const m = Math.max(1, Number(mRaw) || 1);
+                const n = Math.max(1, Number(nRaw) || 2);
+                return { m, n, ratio: m / n };
+            },
+
+            getPureFreq(baseHz, ratioText) {
+                const { ratio } = this.parseRatio(ratioText);
+                return Math.max(0.001, baseHz * ratio);
+            },
+
+            getStereoFrequencies(baseHz, s) {
+                const { m, n } = this.parseRatio(s.subRatio);
+                const harmonicCenterHz = m * baseHz;
+                const targetHz = s.subMode === "beatTuned"
+                    ? Math.max(0, Number(s.subBeatTargetHz) || 0)
+                    : 0;
+
+                // EN: Create the requested local amplitude beat in each channel.
+                // Left:  H versus H - target. Right: H versus H + target.
+                // The total L/R harmonic span is therefore 2 * target.
+                const harmonicLeftRawHz = harmonicCenterHz - targetHz;
+                const harmonicRightRawHz = harmonicCenterHz + targetHz;
+                const subLeftRawHz = harmonicLeftRawHz / n;
+                const subRightRawHz = harmonicRightRawHz / n;
+                const subLeftHz = Math.max(SUB_MIN_FREQ_HZ, subLeftRawHz);
+                const subRightHz = Math.max(SUB_MIN_FREQ_HZ, subRightRawHz);
+
+                return {
+                    m, n, targetHz, harmonicCenterHz,
+                    harmonicLeftRawHz, harmonicRightRawHz,
+                    subLeftRawHz, subRightRawHz, subLeftHz, subRightHz,
+                    subCenterHz: (subLeftHz + subRightHz) * 0.5,
+                    leftBeatHz: Math.abs(harmonicCenterHz - (n * subLeftHz)),
+                    rightBeatHz: Math.abs((n * subRightHz) - harmonicCenterHz),
+                    harmonicSpanHz: Math.abs((n * subRightHz) - (n * subLeftHz)),
+                    subDeltaHz: Math.abs(subRightHz - subLeftHz),
+                    isLimited: subLeftRawHz < SUB_MIN_FREQ_HZ || subRightRawHz < SUB_MIN_FREQ_HZ
+                };
+            },
+
+            getActiveFreq(baseHz, s) {
+                return this.getStereoFrequencies(baseHz, s).subCenterHz;
+            },
+
+            getReadout(baseHz, s) {
+                const stereo = this.getStereoFrequencies(baseHz, s);
+                const pureRaw = this.getPureFreq(baseHz, s.subRatio);
+                const pure = Math.max(SUB_MIN_FREQ_HZ, pureRaw);
+
+                return {
+                    ...stereo,
+                    pureRaw,
+                    pure,
+                    active: stereo.subCenterHz,
+                    actualBeat: (stereo.leftBeatHz + stereo.rightBeatHz) * 0.5,
+                    basePairHz: stereo.harmonicCenterHz,
+                    subPairLeftHz: stereo.n * stereo.subLeftHz,
+                    subPairRightHz: stereo.n * stereo.subRightHz,
+                    equation: `${stereo.n}×L ${stereo.subLeftHz.toFixed(2)} = ${(stereo.n * stereo.subLeftHz).toFixed(2)} Hz | ` +
+                        `${stereo.n}×R ${stereo.subRightHz.toFixed(2)} = ${(stereo.n * stereo.subRightHz).toFixed(2)} Hz`
+                };
+            },
+
+            suggestRatio(baseHz, s) {
+                const currentTarget = this.getActiveFreq(baseHz, s);
+                let best = null;
+
+                for (const ratioText of SUB_RATIO_OPTIONS) {
+                    const candidateState = { ...s, subRatio: ratioText };
+                    const stereo = this.getStereoFrequencies(baseHz, candidateState);
+                    const { m, n } = stereo;
+                    const complexity = m + n;
+                    const highFreq = Math.max(stereo.subLeftHz, stereo.subRightHz);
+
+                    // EN: Prefer playable frequencies, exact harmonic delta, simple ratios, and small jumps.
+                    const highPenalty = highFreq > SUB_MAX_FREQ_HZ ? (highFreq - SUB_MAX_FREQ_HZ) * 8 : 0;
+                    const lowPenalty = stereo.isLimited
+                        ? (SUB_MIN_FREQ_HZ - Math.min(stereo.subLeftRawHz, stereo.subRightRawHz)) * 20
+                        : 0;
+                    const beatError = 0.5 * (
+                        Math.abs(stereo.leftBeatHz - stereo.targetHz) +
+                        Math.abs(stereo.rightBeatHz - stereo.targetHz)
+                    );
+                    const jumpPenalty = Math.abs(stereo.subCenterHz - currentTarget) * 0.15;
+                    const complexityPenalty = complexity * 0.08;
+                    const score = highPenalty + lowPenalty + beatError * 10 + jumpPenalty + complexityPenalty;
+
+                    const candidate = {
+                        ratioText, m, n,
+                        active: stereo.subCenterHz,
+                        actualBeat: (stereo.leftBeatHz + stereo.rightBeatHz) * 0.5,
+                        score
+                    };
+                    if (!best || candidate.score < best.score) best = candidate;
+                }
+
+                return best;
+            }
+        };
+
+        // ----------------------------------------------------------------------------
+        // Subharmonic audio source
+        // ----------------------------------------------------------------------------
+
+        function createSubharmonicSource(audioCtx) {
+            // EN: Parallel stereo source with equal local beats around the shared harmonic center.
+            const oscL = audioCtx.createOscillator();
+            const oscR = audioCtx.createOscillator();
+            const beatBaseOsc = audioCtx.createOscillator();
+            const beatSubOscL = audioCtx.createOscillator();
+            const beatSubOscR = audioCtx.createOscillator();
+            const gainL = audioCtx.createGain();
+            const gainR = audioCtx.createGain();
+            const beatBaseGainL = audioCtx.createGain();
+            const beatBaseGainR = audioCtx.createGain();
+            const beatSubGainL = audioCtx.createGain();
+            const beatSubGainR = audioCtx.createGain();
+            const merger = audioCtx.createChannelMerger(2);
+
+            oscL.type = "sine";
+            oscR.type = "sine";
+            beatBaseOsc.type = "sine";
+            beatSubOscL.type = "sine";
+            beatSubOscR.type = "sine";
+
+            for (const gain of [gainL, gainR, beatBaseGainL, beatBaseGainR, beatSubGainL, beatSubGainR]) {
+                gain.gain.value = 0;
+            }
+
+            oscL.connect(gainL);
+            gainL.connect(merger, 0, 0);
+            oscR.connect(gainR);
+            gainR.connect(merger, 0, 1);
+
+            // EN: H is shared. The n-th sub harmonics are H - target and H + target.
+            beatBaseOsc.connect(beatBaseGainL);
+            beatBaseOsc.connect(beatBaseGainR);
+            beatBaseGainL.connect(merger, 0, 0);
+            beatBaseGainR.connect(merger, 0, 1);
+
+            beatSubOscL.connect(beatSubGainL);
+            beatSubOscR.connect(beatSubGainR);
+            beatSubGainL.connect(merger, 0, 0);
+            beatSubGainR.connect(merger, 0, 1);
+
+            function update(glide = true) {
+                const baseHz = Math.max(0.001, Number(state.baseHz) || 0.001);
+                const stereo = subharmonicEngine.getStereoFrequencies(baseHz, state);
+                const t = now();
+                const g = glide ? Math.max(0, Number(state.glideS) || 0) : 0;
+                const level = Math.max(0, Math.min(0.5, Number(state.subLevel) || 0));
+                const pairLevel = Math.max(0, Math.min(0.5, Number(state.beatPairLevel) || 0));
+
+                gainL.gain.setTargetAtTime(level * 0.75, t, 0.02);
+                gainR.gain.setTargetAtTime(level * 0.75, t, 0.02);
+
+                for (const gain of [beatBaseGainL, beatBaseGainR, beatSubGainL, beatSubGainR]) {
+                    gain.gain.setTargetAtTime(pairLevel * 0.16, t, 0.03);
+                }
+
+                setParamSmooth(oscL.frequency, stereo.subLeftHz, g);
+                setParamSmooth(oscR.frequency, stereo.subRightHz, g);
+                setParamSmooth(beatBaseOsc.frequency, stereo.harmonicCenterHz, g);
+                setParamSmooth(beatSubOscL.frequency, stereo.n * stereo.subLeftHz, g);
+                setParamSmooth(beatSubOscR.frequency, stereo.n * stereo.subRightHz, g);
+            }
+
+            return {
+                merger,
+                update,
+                start() {
+                    oscL.start();
+                    oscR.start();
+                    beatBaseOsc.start();
+                    beatSubOscL.start();
+                    beatSubOscR.start();
+                },
+                stop(t) {
+                    try { oscL.stop(t); } catch (_) {}
+                    try { oscR.stop(t); } catch (_) {}
+                    try { beatBaseOsc.stop(t); } catch (_) {}
+                    try { beatSubOscL.stop(t); } catch (_) {}
+                    try { beatSubOscR.stop(t); } catch (_) {}
+                }
+            };
+        }
+
+        // ----------------------------------------------------------------------------
+        // Automatic harmony selection
+        // ----------------------------------------------------------------------------
+
+        function applyAutoRatioIfEnabled() {
+            // EN: Continuous helper mode. When enabled, keep the ratio near the best playable harmonic candidate.
+            if (!state.autoRatioEnabled) return null;
+
+            const suggestion = subharmonicEngine.suggestRatio(state.baseHz, state);
+            if (!suggestion) return null;
+
+            state.subRatio = suggestion.ratioText;
+
+            const ratioEl = document.getElementById("subRatio");
+            if (ratioEl) ratioEl.value = suggestion.ratioText;
+
+            const label = document.getElementById("suggestRatioVal");
+            if (label) {
+                label.textContent = `${suggestion.ratioText} | actual ${suggestion.actualBeat.toFixed(2)} Hz`;
+            }
+
+            return suggestion;
+        }
+
+        function updateSubharmonic(glide = true) {
+            if (subSource) subSource.update(glide);
+        }
+
+        // ============================================================================
+        // Audio Engine
+        //
+        // Builds and controls the live Web Audio graph. The main oscillator and
+        // subharmonic source share one master gain and one keyboard-controlled gate.
+        // ============================================================================
+
+        // ----------------------------------------------------------------------------
+        // Audio parameter helpers
+        // ----------------------------------------------------------------------------
+
+        function now() { return ctx.currentTime; }
+
+        function setParamSmooth(param, target, glideS) {
+            const t0 = now();
+            param.cancelScheduledValues(t0);
+            param.setValueAtTime(param.value, t0);
+            param.linearRampToValueAtTime(target, t0 + Math.max(0, glideS));
+        }
+
+        /**
+         * Update base and subharmonic frequencies together.
+         */
+        function updateFrequencies(glide = true) {
+            // EN: Delegate pitch/phase updates to the current generator.
+            if (!gen) return;
+            gen.update(glide);
+            updateSubharmonic(glide);
+        }
+
+        function updateMasterVolume() {
+            if (!masterGain) return;
+            masterGain.gain.setValueAtTime(state.masterVol, now());
+        }
+
+        function setGate(on) {
+            if (!gateGain) return;
+            const t0 = now();
+            gateGain.gain.cancelScheduledValues(t0);
+            gateGain.gain.setValueAtTime(gateGain.gain.value, t0);
+            gateGain.gain.linearRampToValueAtTime(on ? 1.0 : 0.0, t0 + 0.02);
+        }
+
+        
+        // ----------------------------------------------------------------------------
+        // Playback lifecycle
+        // ----------------------------------------------------------------------------
+
+        async function start() {
+            if (state.running) return;
+
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // --- Master / output chain ---
+            masterGain = ctx.createGain();
+            masterGain.gain.value = state.masterVol;
+
+            gateGain = ctx.createGain();
+            gateGain.gain.value = 0.0; // off until a key is pressed
+
+            // --- Source generator ---
+        gen = window.createSineGenerator(ctx, state, now, {
+            setParamSmooth,
+        });
+
+            // EN: Keep legacy globals pointing to generator internals for compatibility.
+            delayR = gen.delayR;
+            oscL = gen._oscL;
+            oscR = gen._oscR;
+            gainL = null;
+            gainR = null;
+            merger = gen.merger;
+
+            gen.merger.connect(masterGain);
+
+            subSource = createSubharmonicSource(ctx);
+            subSource.merger.connect(masterGain);
+            masterGain.connect(gateGain);
+            gateGain.connect(ctx.destination);
+
+            // Start at current base frequency without glide
+            updateFrequencies(false);
+
+            gen.start();
+            subSource.start();
+
+            state.running = true;
+        }
+
+
+        
+        function stop() {
+            if (!state.running) return;
+
+            const t0 = now();
+            if (gen) gen.stop(t0);
+            if (subSource) subSource.stop(t0);
+
+            ctx.close();
+
+            state.running = false;
+            ctx = null;
+            gen = null;
+            subSource = null;
+        }
+
+
+        function setBaseHz(hz) {
+            state.baseHz = hz; // no clamp
+
+            // EN: In Auto Ratio mode, re-select the ratio whenever the base note changes.
+            applyAutoRatioIfEnabled();
+
+            // Update UI readouts when the base frequency changes (key press).
+            if (typeof window.refreshLabels === "function") window.refreshLabels();
+
+            if (state.running) updateFrequencies(true);
+        }
+
+
+        // ============================================================================
+        // Loop Recorder and Player
+        //
+        // Records monophonic keyboard events as timestamped gate and pitch changes.
+        // Playback re-schedules those events as a repeating phrase.
+        // ============================================================================
+        const loopState = {
+            isRecording: false,
+            isLooping: false,
+
+            recordStartTime: 0,
+
+            // Events are relative to recordStartTime:
+            // { t: seconds, type: 'gateOn'|'gateOff'|'setHz', hz?: number }
+            events: [],
+            loopDuration: 0,
+            hasLoop: false,
+
+            cycleTimerId: null,
+            eventTimerIds: []
+        };
+
+        function setLoopStatus(mode) {
+            // EN: Minimal UI indicator for loop state (idle / recording / looping).
+            const el = document.getElementById("loopStatus");
+            if (!el) return;
+
+            el.classList.remove("idle", "rec", "loop");
+
+            if (mode === "rec") {
+                el.textContent = "REC…";
+                el.classList.add("rec");
+            } else if (mode === "loop") {
+                el.textContent = "LOOPING";
+                el.classList.add("loop");
+            } else {
+                el.textContent = "IDLE";
+                el.classList.add("idle");
+            }
+        }
+
+        function setRecButton(isRecording) {
+            // EN: Single Rec button toggles between "Rec loop" and "Stop rec".
+            const b = document.getElementById("startBtn");
+            if (b) b.textContent = isRecording ? "Stop rec" : "Rec loop";
+        }
+
+        function setPlayButton(isLooping) {
+            // EN: Single Play button toggles between "Play" and "Stop loop".
+            const b = document.getElementById("playBtn");
+            if (b) b.textContent = isLooping ? "Stop loop" : "Play loop";
+        }
+
+        function clearLoopTimers() {
+            if (loopState.cycleTimerId) {
+                window.clearTimeout(loopState.cycleTimerId);
+                loopState.cycleTimerId = null;
+            }
+            // EN: Cancel per-event timeouts scheduled within the cycle.
+            for (const id of loopState.eventTimerIds) window.clearTimeout(id);
+            loopState.eventTimerIds = [];
+        }
+
+        function recordEvent(ev) {
+            // EN: Record only while explicitly recording and audio context exists.
+            if (!loopState.isRecording || !ctx) return;
+
+            const t = ctx.currentTime - loopState.recordStartTime;
+            loopState.events.push({ ...ev, t });
+        }
+
+        function startRecordingLoop() {
+            // EN: Begin a new recording (replaces any existing loop).
+            stopLoopPlayback();
+            loopState.hasLoop = false;
+
+            loopState.isRecording = true;
+            loopState.events = [];
+            loopState.loopDuration = 0;
+
+            loopState.recordStartTime = ctx ? ctx.currentTime : 0;
+
+            setLoopStatus("rec");
+            setRecButton(true);
+            setPlayButton(false); // rec overrides playback UI
+        }
+
+        function cancelRecordingLoop() {
+            // EN: Abort recording and discard what was captured.
+            loopState.isRecording = false;
+            loopState.events = [];
+            loopState.loopDuration = 0;
+            loopState.hasLoop = false;
+
+            setGate(false);
+            setLoopStatus("idle");
+            setRecButton(false);
+            setPlayButton(false);
+        }
+
+        function finalizeRecordingLoop() {
+            // EN: Stop recording and compute loop duration with a fixed tail silence.
+            if (!loopState.isRecording) return;
+
+            loopState.isRecording = false;
+
+            if (!loopState.events.length) {
+                setLoopStatus("idle");
+                setRecButton(false);
+                setPlayButton(false); // EN: No loop captured, keep Play label in default state.
+                return;
+            }
+
+            // EN: Ensure phrase ends with gateOff so playback won't get stuck ON.
+            const last = loopState.events[loopState.events.length - 1];
+            if (last.type !== "gateOff") {
+                const t = ctx ? (ctx.currentTime - loopState.recordStartTime) : last.t;
+                loopState.events.push({ t, type: "gateOff" });
+            }
+
+            // EN: Always silence immediately at finalize time.
+            setGate(false);
+
+            const lastT = loopState.events[loopState.events.length - 1].t;
+            loopState.loopDuration = lastT;
+            loopState.hasLoop = true;
+
+            // Not auto-playing by design; Play button starts playback.
+            setLoopStatus("idle");
+            setRecButton(false);  // EN: Return Rec button label back to "Rec loop" after stopping recording.
+            setPlayButton(false); // EN: Ensure Play label is reset (will read "Play loop" after rename).
+        }
+
+        async function startLoopPlayback() {
+            // EN: Play the recorded loop (if any) until Stop is pressed.
+            if (!loopState.hasLoop || !loopState.loopDuration || !loopState.events.length) return;
+
+            if (!state.running) await start();
+
+            loopState.isLooping = true;
+            setPlayButton(true);
+            setLoopStatus("loop");
+            scheduleLoopCycle();
+        }
+
+        function scheduleLoopCycle() {
+            if (!loopState.isLooping) return;
+
+            clearLoopTimers();
+
+            // EN: Reset gate at cycle start to avoid stuck sound between cycles.
+            setGate(false);
+
+            for (const ev of loopState.events) {
+                const delayMs = Math.max(0, ev.t * 1000);
+
+                const id = window.setTimeout(() => {
+                    if (!loopState.isLooping) return;
+
+                    if (ev.type === "gateOn") {
+                        if (Number.isFinite(ev.hz)) setBaseHz(ev.hz);
+                        setGate(true);
+                    } else if (ev.type === "setHz") {
+                        if (Number.isFinite(ev.hz)) setBaseHz(ev.hz);
+                    } else if (ev.type === "gateOff") {
+                        setGate(false);
+
+                    }
+                }, delayMs);
+
+                loopState.eventTimerIds.push(id);
+            }
+
+            const cycleMs = Math.max(0, loopState.loopDuration * 1000);
+            loopState.cycleTimerId = window.setTimeout(() => {
+                scheduleLoopCycle();
+            }, cycleMs);
+        }
+
+        function stopLoopPlayback() {
+            // EN: Stop loop playback; keep the recorded loop for later Play.
+            loopState.isLooping = false;
+            clearLoopTimers();
+
+            setGate(false);
+            setLoopStatus(loopState.isRecording ? "rec" : "idle");
+            setPlayButton(false);
+        }
+
+        // ============================================================================
+        // Offline WAV Renderer
+        //
+        // Rebuilds a simplified audio graph in OfflineAudioContext and exports
+        // the resulting stereo buffer as 16-bit PCM WAV.
+        // ============================================================================
+
+        function downloadBlob(blob, filename = "render.wav") {
+            // EN: Trigger a client-side download without a server roundtrip.
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function encodeWavFromAudioBuffer(buffer) {
+            // EN: Encode an AudioBuffer as 16-bit PCM WAV (RIFF/WAVE).
+            const numChannels = buffer.numberOfChannels;
+            const sampleRate = buffer.sampleRate;
+            const numFrames = buffer.length;
+
+            const bitsPerSample = 16;
+            const blockAlign = numChannels * (bitsPerSample / 8);
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = numFrames * blockAlign;
+
+            const out = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(out);
+
+            let o = 0;
+            const ws = (s) => { for (let i = 0; i < s.length; i++) view.setUint8(o++, s.charCodeAt(i)); };
+            const u32 = (v) => { view.setUint32(o, v, true); o += 4; };
+            const u16 = (v) => { view.setUint16(o, v, true); o += 2; };
+
+            ws("RIFF"); u32(36 + dataSize); ws("WAVE");
+            ws("fmt "); u32(16); u16(1); u16(numChannels);
+            u32(sampleRate); u32(byteRate); u16(blockAlign); u16(bitsPerSample);
+            ws("data"); u32(dataSize);
+
+            const chData = Array.from({ length: numChannels }, (_, ch) => buffer.getChannelData(ch));
+
+            for (let i = 0; i < numFrames; i++) {
+                for (let ch = 0; ch < numChannels; ch++) {
+                    let x = chData[ch][i];
+                    x = Math.max(-1, Math.min(1, x));
+                    const s = x < 0 ? Math.round(x * 0x8000) : Math.round(x * 0x7fff);
+                    view.setInt16(o, s, true);
+                    o += 2;
+                }
+            }
+
+            return new Blob([out], { type: "audio/wav" });
+        }
+
+        function scheduleGate(offlineCtx, gateGain, t, on) {
+            // EN: Short fade to avoid clicks.
+            const v = on ? 1.0 : 0.0;
+            gateGain.gain.setValueAtTime(gateGain.gain.value, t);
+            gateGain.gain.linearRampToValueAtTime(v, t + 0.02);
+        }
+
+        function scheduleHz(offlineCtx, oscParam, t, hz, glideS) {
+            // EN: Mirror the live glide behavior (linear ramp).
+            const g = Math.max(0, Number(glideS) || 0);
+            oscParam.cancelScheduledValues(t);
+            oscParam.setValueAtTime(oscParam.value, t);
+            if (g > 0) oscParam.linearRampToValueAtTime(hz, t + g);
+            else oscParam.setValueAtTime(hz, t);
+        }
+
+        async function renderOfflineToBuffer({ durationSec = 5, sampleRate = 48000, stateSnapshot, loopSnapshot } = {}) {
+            // EN: OfflineAudioContext requires rebuilding the audio graph; you cannot reuse live nodes.
+            const channels = 2;
+            const length = Math.floor(durationSec * sampleRate);
+            const offline = new OfflineAudioContext(channels, length, sampleRate);
+
+            const s = stateSnapshot || { ...state };
+
+            // --- Rebuild the same core topology as the live graph ---
+            const delayR = offline.createDelay(0.1);
+            delayR.delayTime.value = 0;
+
+            const oscL = offline.createOscillator();
+            const oscR = offline.createOscillator();
+            oscL.type = "sine";
+            oscR.type = "sine";
+
+            const gainL = offline.createGain();
+            const gainR = offline.createGain();
+            gainL.gain.value = 0.9;
+            gainR.gain.value = 0.9;
+
+            const merger = offline.createChannelMerger(2);
+
+            const masterGain = offline.createGain();
+            masterGain.gain.value = Number(s.masterVol ?? 0.5);
+
+            const gateGain = offline.createGain();
+            gateGain.gain.value = 0.0;
+
+            oscL.connect(gainL);
+            gainL.connect(merger, 0, 0);
+
+            oscR.connect(gainR);
+            gainR.connect(delayR);
+            delayR.connect(merger, 0, 1);
+
+            merger.connect(masterGain);
+            masterGain.connect(gateGain);
+            gateGain.connect(offline.destination);
+            // --- Initial frequency ---
+            const baseHz = Number(s.baseHz || 27.5);
+            oscL.frequency.value = baseHz;
+            oscR.frequency.value = baseHz;
+            delayR.delayTime.value = 0;
+
+            // --- Schedule loop events if provided, else gate ON for full duration ---
+            if (loopSnapshot && Array.isArray(loopSnapshot.events) && loopSnapshot.events.length) {
+                gateGain.gain.setValueAtTime(0.0, 0);
+
+                for (const ev of loopSnapshot.events) {
+                    const t = Math.max(0, Number(ev.t) || 0);
+                    if (t > durationSec) continue;
+
+                    if (ev.type === "gateOn") scheduleGate(offline, gateGain, t, true);
+                    if (ev.type === "gateOff") scheduleGate(offline, gateGain, t, false);
+
+                    if (ev.type === "setHz" && typeof ev.hz === "number") {
+                        const hz = Math.max(0.001, ev.hz);
+                        scheduleHz(offline, oscL.frequency, t, hz, s.glideS);
+                        scheduleHz(offline, oscR.frequency, t, hz, s.glideS);
+                        delayR.delayTime.setValueAtTime(0, t);
+                    }
+                }
+            } else {
+                // EN: No loop snapshot: export a steady tone with gate open.
+                gateGain.gain.setValueAtTime(1.0, 0.01);
+            }
+
+            oscL.start(0);
+            oscR.start(0);
+            oscL.stop(durationSec);
+            oscR.stop(durationSec);
+
+            return await offline.startRendering();
+        }
+
+        async function renderAndSaveWav({ durationSec = 5, sampleRate = 48000, stateSnapshot, loopSnapshot, filename = "render.wav" } = {}) {
+            const buffer = await renderOfflineToBuffer({ durationSec, sampleRate, stateSnapshot, loopSnapshot });
+            const wavBlob = encodeWavFromAudioBuffer(buffer);
+            downloadBlob(wavBlob, filename);
+        }
+
+        // ============================================================================
+        // User Interface
+        //
+        // Synchronizes DOM controls with application state and forwards user changes
+        // to the live audio engine. Rendering and DSP calculations remain separate.
+        // ============================================================================
+
+        function bindUI() {
+            const $ = (id) => document.getElementById(id);
+
+            const masterVol = $("masterVol");
+            const glideS = $("glideS");
+            const subRatio = $("subRatio");
+            const subMode = $("subMode");
+            const subLevel = $("subLevel");
+            const beatPairLevel = $("beatPairLevel");
+            const subBeatTargetHz = $("subBeatTargetHz");
+            const suggestRatioBtn = $("suggestRatioBtn");
+            // Initialize UI from state
+            subRatio.value = state.subRatio;
+            subMode.value = state.subMode;
+            subLevel.value = String(state.subLevel);
+            beatPairLevel.value = String(state.beatPairLevel);
+            subBeatTargetHz.value = String(state.subBeatTargetHz);
+
+            function refreshLabels() {
+                $("masterVal").textContent = `${Number(state.masterVol).toFixed(3)}`;
+
+                const sub = subharmonicEngine.getReadout(state.baseHz, state);
+                $("subRatioVal").textContent = state.subRatio;
+                $("subModeVal").textContent = state.subMode === "beatTuned" ? "Beat tuned" : "Pure";
+                $("subLevelVal").textContent = Number(state.subLevel).toFixed(2);
+                $("beatPairLevelVal").textContent = Number(state.beatPairLevel).toFixed(2);
+                $("subBeatTargetVal").textContent = `${Number(state.subBeatTargetHz).toFixed(1)} Hz`;
+                const limitLine = sub.isLimited
+                    ? `<br><span class="warn">LIMITED:</span> one stereo side was clamped to ${SUB_MIN_FREQ_HZ.toFixed(0)} Hz`
+                    : `<br><span class="ok">OK:</span> both stereo sub frequencies are playable`;
+
+                $("subReadout").innerHTML = `
+                    <strong>Base:</strong> ${state.baseHz.toFixed(2)} Hz<br>
+                    <strong>Ratio:</strong> ${state.subRatio}<br>
+                    <strong>Pure center:</strong> ${sub.pure.toFixed(2)} Hz ${sub.pureRaw < SUB_MIN_FREQ_HZ ? `(raw ${sub.pureRaw.toFixed(2)} Hz)` : ""}<br>
+                    <strong>Sub L / R:</strong> ${sub.subLeftHz.toFixed(2)} / ${sub.subRightHz.toFixed(2)} Hz<br>
+                    <strong>Sub Δf:</strong> ${sub.subDeltaHz.toFixed(2)} Hz<br>
+                    <strong>Harmonic center:</strong> ${sub.m}×base = ${sub.basePairHz.toFixed(2)} Hz<br>
+                    <strong>n-th harmonics L / R:</strong> ${sub.subPairLeftHz.toFixed(2)} / ${sub.subPairRightHz.toFixed(2)} Hz<br>
+                    <strong>Beat target per side:</strong> ${Number(state.subBeatTargetHz).toFixed(1)} Hz<br>
+                    <strong>Actual beat L / R:</strong> ${sub.leftBeatHz.toFixed(2)} / ${sub.rightBeatHz.toFixed(2)} Hz<br>
+                    <strong>L/R harmonic span:</strong> ${sub.harmonicSpanHz.toFixed(2)} Hz<br>
+                    <strong>Equation:</strong> ${sub.equation}
+                    ${limitLine}
+                `;
+
+                if (suggestRatioBtn) {
+                    suggestRatioBtn.textContent = state.autoRatioEnabled ? "Auto ratio: ON" : "Auto ratio: OFF";
+                    suggestRatioBtn.classList.toggle("active", !!state.autoRatioEnabled);
+                }
+
+                if (!state.autoRatioEnabled) {
+                    const label = $("suggestRatioVal");
+                    if (label && label.textContent.trim() === "") label.textContent = "manual";
+                }
+            }
+
+            // Expose readout refresh for non-UI callers (e.g., setBaseHz on key press).
+            window.refreshLabels = refreshLabels;
+
+            masterVol.addEventListener("input", () => {
+                state.masterVol = Number(masterVol.value);
+                refreshLabels();
+                if (state.running) updateMasterVolume();
+            });
+
+            glideS.addEventListener("input", () => {
+                state.glideS = Number(glideS.value);
+                refreshLabels();
+            });
+
+
+
+            subRatio.addEventListener("change", () => {
+                // EN: Manual ratio selection turns Auto Ratio off to avoid fighting the user.
+                state.autoRatioEnabled = false;
+                state.subRatio = subRatio.value;
+                const label = $("suggestRatioVal");
+                if (label) label.textContent = "manual";
+                refreshLabels();
+                updateSubharmonic(true);
+            });
+
+            subMode.addEventListener("change", () => {
+                state.subMode = subMode.value;
+                applyAutoRatioIfEnabled();
+                refreshLabels();
+                updateSubharmonic(true);
+            });
+
+            subLevel.addEventListener("input", () => {
+                state.subLevel = Number(subLevel.value);
+                refreshLabels();
+                updateSubharmonic(false);
+            });
+
+            beatPairLevel.addEventListener("input", () => {
+                state.beatPairLevel = Number(beatPairLevel.value);
+                refreshLabels();
+                updateSubharmonic(false);
+            });
+
+            subBeatTargetHz.addEventListener("input", () => {
+                state.subBeatTargetHz = Number(subBeatTargetHz.value);
+                applyAutoRatioIfEnabled();
+                refreshLabels();
+                updateSubharmonic(true);
+            });
+
+            suggestRatioBtn.addEventListener("click", () => {
+                // EN: Toggle continuous automatic ratio selection.
+                state.autoRatioEnabled = !state.autoRatioEnabled;
+
+                if (state.autoRatioEnabled) {
+                    applyAutoRatioIfEnabled();
+                } else {
+                    const label = $("suggestRatioVal");
+                    if (label) label.textContent = "manual";
+                }
+
+                refreshLabels();
+                updateSubharmonic(true);
+            });
+
+            $("startBtn").addEventListener("click", async () => {
+                // EN: Toggle recording with the same button.
+                if (!state.running) await start();
+
+                if (!loopState.isRecording) {
+                    startRecordingLoop();
+                } else {
+                    finalizeRecordingLoop();
+                }
+            });
+
+            $("playBtn").addEventListener("click", async () => {
+                // EN: Toggle loop playback with the same button.
+                if (loopState.isLooping) {
+                    stopLoopPlayback();
+                    return;
+                }
+                await startLoopPlayback();
+            });
+
+        $("wavBtn").addEventListener("click", async () => {
+            // EN: Offline render + WAV encode + download based on the current UI state (and optional loop events).
+            const durationSec = (loopState.hasLoop && loopState.loopDuration) ? loopState.loopDuration : 5;
+            const snapState = { ...state };
+            const snapLoop = loopState.hasLoop ? { events: [...loopState.events], loopDuration: loopState.loopDuration } : null;
+
+            try {
+                await renderAndSaveWav({
+                    durationSec,
+                    sampleRate: 48000,
+                    stateSnapshot: snapState,
+                    loopSnapshot: snapLoop,
+                    filename: "subharmonic_beat_lab_v0_3_render.wav",
+                });
+            } catch (err) {
+                console.error("WAV render failed:", err);
+                alert("WAV render failed. See console for details.");
+            }
+        });
+
+
+            refreshLabels();
+
+            // EN: Initialize Rec/Play button labels to match current loop state.
+            setRecButton(false);
+            setPlayButton(false);
+        }
+
+        // ============================================================================
+        // Initialization
+        // ============================================================================
+
+        bindUI();
+
+        // ============================================================================
+        // Virtual Keyboard
+        //
+        // Builds the A0-A1 piano layout and translates pointer gestures into
+        // monophonic note, glide, gate, and loop-recorder events.
+        // ============================================================================
+
+        // ----------------------------------------------------------------------------
+        // Note layout and frequency mapping
+        // ----------------------------------------------------------------------------
+        const A0 = 27.5;
+        const SEMITONE = Math.pow(2, 1 / 12);
+
+        function hzForSemitoneFromA0(n) {
+            return A0 * Math.pow(SEMITONE, n);
+        }
+
+        // White keys: A B C D E F G (in this register: A0 B0 C1 D1 E1 F1 G1)
+        const whiteKeys = [
+            { note: "A0", n: 0 },
+            { note: "B0", n: 2 },
+            { note: "C1", n: 3 },
+            { note: "D1", n: 5 },
+            { note: "E1", n: 7 },
+            { note: "F1", n: 8 },
+            { note: "G1", n: 10 },
+            { note: "A1", n: 12 }
+        ];
+
+        // Black keys positions (between whites): A# C# D# F# G#
+        // Each has an anchor index referencing the left white key column.
+        const blackKeys = [
+            { note: "A#0", n: 1, leftWhiteIndex: 0 },
+            { note: "C#1", n: 4, leftWhiteIndex: 2 },
+            { note: "D#1", n: 6, leftWhiteIndex: 3 },
+            { note: "F#1", n: 9, leftWhiteIndex: 5 },
+            { note: "G#1", n: 11, leftWhiteIndex: 6 }
+        ];
+
+    let resizeBound = false;
+    let resizeRaf = 0;
+
+        function buildPiano() {
+            const piano = document.getElementById("piano");
+            piano.innerHTML = "";
+
+            // Add white keys as grid children
+            for (const wk of whiteKeys) {
+                const hz = hzForSemitoneFromA0(wk.n);
+
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "whiteKey";
+                btn.dataset.hz = String(hz);
+                btn.dataset.note = wk.note;
+
+                const footer = document.createElement("div");
+                footer.className = "footer";
+                footer.innerHTML = `<span>${wk.note}</span><span class="hz">${hz.toFixed(2)} Hz</span>`;
+                btn.appendChild(footer);
+
+                attachKeyHandlers(btn, hz);
+
+                piano.appendChild(btn);
+            }
+
+            // Add black keys as absolute positioned elements
+            // Compute width per white key based on container width (after layout).
+            requestAnimationFrame(() => {
+                const rect = piano.getBoundingClientRect();
+                const whiteW = rect.width / 8;
+
+                // Mustan koskettimen leveys suhteessa whiteW:hen.
+                // Pidä tämä linjassa CSS:n 0.48 kanssa.
+                const blackW = whiteW * 0.48;
+
+                for (const bk of blackKeys) {
+                    const hz = hzForSemitoneFromA0(bk.n);
+
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "blackKey";
+                    btn.dataset.hz = String(hz);
+                    btn.dataset.note = bk.note;
+
+                    // Center black key between two white keys:
+                    // boundary at (leftWhiteIndex + 1) * whiteW, then shift left by half black width.
+                    // Clamp black-key x so it never overflows the piano container
+                    let left = (bk.leftWhiteIndex + 1) * whiteW - (blackW / 2);
+                    left = Math.max(0, Math.min(left, rect.width - blackW));
+
+                    btn.style.left = `${left}px`;
+                    btn.style.width = `${blackW}px`;
+
+
+                    const label = document.createElement("div");
+                    label.className = "label";
+                    label.innerHTML = `<span>${bk.note}</span><span class="hz">${hz.toFixed(2)} Hz</span>`;
+                    btn.appendChild(label);
+
+                    attachKeyHandlers(btn, hz);
+                    piano.appendChild(btn);
+                }
+            });
+
+            // Rebuild on resize to keep black-key positions accurate
+            if (!resizeBound) {
+                resizeBound = true;
+                window.addEventListener("resize", () => {
+                    cancelAnimationFrame(resizeRaf);
+                    resizeRaf = requestAnimationFrame(() => buildPiano());
+                }, { passive: true });
+            }
+        }
+
+        // ----------------------------------------------------------------------------
+        // Pointer interaction
+        // ----------------------------------------------------------------------------
+
+        // Pointer tracking: allow "slide to another key" by moving finger
+        let activePointerId = null;
+        let activeEl = null;
+
+        function attachKeyHandlers(el, hz) {
+            const down = async (e) => {
+                e.preventDefault();
+
+                if (activePointerId !== null && activePointerId !== e.pointerId) return;
+
+                activePointerId = e.pointerId;
+                activeEl = el;
+                el.classList.add("active");
+
+                if (!state.running) await start();
+
+                setBaseHz(hz);
+                setGate(true);
+
+                // EN: Record note start.
+                recordEvent({ type: "gateOn", hz });
+
+                try { el.setPointerCapture(e.pointerId); } catch (_) { }
+            };
+
+            const up = (e) => {
+                e.preventDefault();
+                if (activePointerId !== e.pointerId) return;
+
+                if (activeEl) activeEl.classList.remove("active");
+                activeEl = null;
+                activePointerId = null;
+
+                setGate(false);
+
+                // EN: Record note end.
+                recordEvent({ type: "gateOff" });
+            };
+
+            const move = (e) => {
+                if (activePointerId !== e.pointerId) return;
+
+                // Hit-test under finger; switch key if different
+                const x = e.clientX;
+                const y = e.clientY;
+                const under = document.elementFromPoint(x, y);
+
+                if (!under) return;
+
+                const keyEl = under.classList?.contains("whiteKey") || under.classList?.contains("blackKey")
+                    ? under
+                    : under.closest?.(".whiteKey, .blackKey");
+
+                if (!keyEl || keyEl === activeEl) return;
+
+                const newHz = Number(keyEl.dataset.hz);
+                if (!Number.isFinite(newHz)) return;
+
+                if (activeEl) activeEl.classList.remove("active");
+                activeEl = keyEl;
+                activeEl.classList.add("active");
+
+                setBaseHz(newHz); // glide happens here
+
+                // EN: Record pitch change while gate is held (monophonic slide).
+                recordEvent({ type: "setHz", hz: newHz });
+            };
+
+            el.addEventListener("pointerdown", down, { passive: false });
+            el.addEventListener("pointerup", up, { passive: false });
+            el.addEventListener("pointercancel", up, { passive: false });
+            el.addEventListener("pointermove", move, { passive: false });
+            el.addEventListener("pointerleave", (e) => {
+                // If pointer capture is active, we still get moves; ignore leave.
+                // If not captured, releasing outside should stop sound.
+                if (activePointerId === null) return;
+            }, { passive: true });
+        }
+
+        // ----------------------------------------------------------------------------
+        // Final initialization
+        // ----------------------------------------------------------------------------
+
+        buildPiano();
+    </script>
+</body>
+
+</html>
