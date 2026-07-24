@@ -1,0 +1,2955 @@
+<!--
+Subharmonic Beat Lab v2.5
+
+Research prototype
+
+Purpose:
+Explore pleasant low-frequency beat structures generated
+from subharmonic relationships.
+
+Author: Jukka Linjama
+Year: 2026
+-->
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>Subharmonic Beat Lab v2.5</title>
+    <style>
+        :root {
+            --gap: 10px;
+            --white-h: 110px;
+            --black-h: 70px;
+            --white-w: 1fr;
+            --radius: 12px;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            margin: 0;
+            padding: 16px;
+            background: #fafafa;
+            color: #111;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin: 0 0 10px 0;
+            font-weight: 650;
+        }
+
+        .row {
+            margin: 12px 0;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px 12px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid #e6e6e6;
+            border-radius: 12px;
+        }
+
+        .controls .btns {
+            grid-column: 1 / -1;
+        }
+
+        .control {
+            display: grid;
+            grid-template-columns: minmax(120px, 160px) 1fr auto;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .control input[type="range"] {
+            width: 100%;
+        }
+
+        .control select {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid #d0d0d0;
+            background: #fff;
+            font-size: 14px;
+        }
+        /* EN: Nested sub-controls (indentation under the main label). */
+        .panSub {
+        margin-left: 20px;
+        margin-top: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        }
+
+        .val {
+            font-variant-numeric: tabular-nums;
+            font-size: 13px;
+            opacity: 0.85;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        .btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 12px;
+            border: 1px solid #d0d0d0;
+            border-bottom-width: 3px;
+            border-radius: 12px;
+            background: #fff;
+            font-size: 14px;
+        }
+
+        button:active {
+            transform: translateY(1px);
+            border-bottom-width: 2px;
+        }
+
+        /* --- Loop status badge --- */
+        .status {
+            align-self: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid #d0d0d0;
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+            user-select: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.35; }
+            100% { opacity: 1; }
+        }
+
+        .status.idle { background: #f6f6f6; color: #333; }
+        .status.rec  { background: #ffe9e9; color: #8a0000; border-color: #f2b3b3; animation: pulse 1s infinite; }
+        .status.loop { background: #e9f2ff; color: #003a8a; border-color: #b3ccf2; }
+
+        /* --- Disabled control (mode-dependent) --- */
+        .control.disabled {
+            opacity: 0.35;
+        }
+        .control.disabled input,
+        .control.disabled select {
+            pointer-events: none;
+        }
+
+
+        /* --- Piano keyboard --- */
+        .kbdWrap {
+            margin-top: 14px;
+            padding: 14px;
+            background: #fff;
+            border: 1px solid #e6e6e6;
+            border-radius: 12px;
+            overflow: hidden;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .kbdTitle {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: baseline;
+            margin-bottom: 10px;
+            font-size: 13px;
+            opacity: 0.85;
+        }
+
+        .keyboardTranspose {
+            margin: 0 0 12px 0;
+        }
+
+        .piano {                    /* 8 white keys => A0..A1 inclusive */
+            position: relative;
+            width: 100%;
+            height: var(--white-h);
+            display: grid;       
+            grid-template-columns: repeat(8, var(--white-w)); /* A B C D E F G A */
+            gap: 0;
+            border: 1px solid #ddd;
+            border-radius: var(--radius);
+            background: #f2f2f2;
+            overflow: hidden;
+        }
+
+        .whiteKey {
+            position: relative;
+            border-right: 1px solid #ddd;
+            background: linear-gradient(#ffffff, #f1f1f1);
+            height: var(--white-h);
+            padding: 0;
+            margin: 0;
+            border-radius: 0;
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+            border-right: 1px solid #ddd;
+            touch-action: none;
+        }
+
+        .whiteKey:last-child {
+            border-right: none;
+        }
+
+        .whiteKey.active {
+            background: linear-gradient(#f1f1f1, #e6e6e6);
+        }
+
+        .whiteKey.target,
+        .blackKey.target {
+            box-shadow: inset 0 0 0 3px rgba(143, 191, 255, 0.85), 0 0 18px rgba(143, 191, 255, 0.35);
+        }
+
+        .whiteKey .footer {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 8px;              /* keep inside the key so it won't be clipped */
+            text-align: center;
+            font-size: 11px;
+            opacity: 0.85;
+            pointer-events: none;
+            line-height: 1.05;
+        }
+        .whiteKey .footer .hz {
+            display: block;
+            font-size: 10px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .whiteKey .hz {
+            display: block;
+            font-variant-numeric: tabular-nums;
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .blackKey {
+            position: absolute;
+            top: 0;
+            width: calc(100% / 8 * 0.4);
+            height: var(--black-h);
+            background: linear-gradient(#3a3a3a, #111);
+            border: 1px solid #000;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            z-index: 10;
+            padding: 0;
+            touch-action: none;
+        }
+
+        .blackKey.active {
+            background: linear-gradient(#2a2a2a, #000);
+        }
+
+        .blackKey .label {
+            position: absolute;
+            left: 6px;
+            top: 6px;            /* ennen: bottom */
+            bottom: auto;
+            color: #fff;
+            font-size: 10px;
+            opacity: 0.9;
+            line-height: 1.1;
+        }
+
+        .blackKey .hz {
+            display: block;
+            font-variant-numeric: tabular-nums;
+            font-size: 10px;
+            opacity: 0.75;
+            margin-top: 3px;
+        }
+    
+        .tiny { font-size: 12px; opacity: 0.9; }
+        .hint { font-size: 12px; opacity: 0.75; margin-top: 6px; }
+
+        .miniBtn.active {
+            border-color: #8fbfff;
+            box-shadow: 0 0 0 1px rgba(143, 191, 255, 0.35), 0 0 16px rgba(143, 191, 255, 0.18);
+        }
+
+        .modeBtn.active {
+            border-color: #8fbfff;
+            background: #20314d;
+            box-shadow: 0 0 0 1px rgba(143, 191, 255, 0.35), 0 0 16px rgba(143, 191, 255, 0.18);
+        }
+
+
+        /* --- Subharmonic Beat Lab dark theme --- */
+        body {
+            background: #090b10;
+            color: #f2f5fb;
+        }
+
+        .controls, .kbdWrap, .subLabPanel {
+            background: #111722;
+            border-color: #263247;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+        }
+
+        button, .control select, .control input[type="range"] {
+            color: #f2f5fb;
+        }
+
+        button, .control select {
+            background: #172033;
+            border-color: #33415c;
+        }
+
+        .control input[type="range"] {
+            accent-color: #8fb7ff;
+        }
+
+        .status.idle { background: #151b28; color: #d5def2; border-color: #33415c; }
+        .status.rec  { background: #331a1d; color: #ffb7bd; border-color: #7a333c; }
+        .status.loop { background: #13243a; color: #b9d5ff; border-color: #31527d; }
+
+        .piano {
+            border-color: #283449;
+            background: #141a26;
+        }
+
+        .whiteKey {
+            background: linear-gradient(#d8dde8, #aeb7c7);
+            border-right-color: #7e899b;
+            color: #111827;
+        }
+
+        .whiteKey.active {
+            background: linear-gradient(#f3f6fb, #cbd5e6);
+        }
+
+        .blackKey {
+            background: linear-gradient(#2b3242, #07090d);
+            border-color: #030407;
+        }
+
+        .blackKey.active {
+            background: linear-gradient(#46516a, #101522);
+        }
+
+        .subLabPanel {
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid #263247;
+            border-radius: 12px;
+        }
+
+        .panelHeader {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: baseline;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .paramGrid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(320px, 1fr));
+            gap: 12px;
+            align-items: start;
+        }
+
+        .panelGroup {
+            display: grid;
+            gap: 10px;
+            padding: 10px;
+            border: 1px solid #263247;
+            border-radius: 12px;
+            background: #0b1018;
+        }
+
+
+        .panelGroup .control {
+            grid-template-columns: minmax(120px, 150px) minmax(120px, 1fr) auto;
+        }
+
+        .panelGroupTitle {
+            font-size: 12px;
+            font-weight: 650;
+            letter-spacing: 0.02em;
+            color: #b9d5ff;
+            text-transform: uppercase;
+        }
+
+        .subReadout {
+            padding: 12px;
+            border-radius: 12px;
+            background: #0b1018;
+            border: 1px solid #263247;
+            font-size: 13px;
+            line-height: 1.55;
+            font-variant-numeric: tabular-nums;
+            color: #d9e4f8;
+        }
+
+        .subReadout strong {
+            color: #ffffff;
+        }
+
+        .readoutColumns {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .motionHierarchy {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .motionMetric {
+            min-width: 0;
+            padding: 9px 10px;
+            border: 1px solid #263247;
+            border-radius: 10px;
+            background: #111722;
+        }
+
+        .motionMetricTitle {
+            color: #b9d5ff;
+            font-size: 11px;
+            font-weight: 650;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .motionMetricValue {
+            margin: 2px 0;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 650;
+        }
+
+        .motionMetricDetail {
+            color: #aab8cc;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .motionMetric.inactive {
+            opacity: 0.48;
+        }
+
+        .readoutGroup {
+            min-width: 0;
+        }
+
+        .readoutGroupTitle {
+            margin-bottom: 6px;
+            color: #b9d5ff;
+            font-size: 12px;
+            font-weight: 650;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .subReadout .warn {
+            color: #ffcc7a;
+            font-weight: 650;
+        }
+
+        .subReadout .ok {
+            color: #9fd3ff;
+        }
+
+        .miniBtn {
+            justify-self: start;
+            width: auto;
+        }
+
+
+        /* --- Live Lissajous views --- */
+        .scopePanel {
+            padding: 12px;
+            background: #111722;
+            border: 1px solid #263247;
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+        }
+
+        .scopeGrid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(150px, 200px));
+            justify-content: start;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .scopeCard {
+            min-width: 0;
+            padding: 10px;
+            border: 1px solid #263247;
+            border-radius: 12px;
+            background: #0b1018;
+        }
+
+        .scopeTitle {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #d9e4f8;
+        }
+
+        .scopeCanvas {
+            display: block;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 8px;
+            background: #070b11;
+        }
+
+        .readoutWide {
+            grid-column: 1 / -1;
+        }
+
+        /* --- Compact actuator motion model --- */
+        .actuatorCard {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #263247;
+            border-radius: 12px;
+            background: #0b1018;
+        }
+
+        .actuatorHeader {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #d9e4f8;
+        }
+
+        .actuatorCanvas {
+            display: block;
+            width: 100%;
+            height: 180px;
+            border-radius: 8px;
+            background: #070b11;
+        }
+
+        .actuatorNote {
+            margin-top: 7px;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #9eacc0;
+        }
+
+        @media (max-width: 900px) {
+            .controls,
+            .paramGrid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 680px) {
+            .readoutColumns,
+            .motionHierarchy {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .scopeGrid {
+                grid-template-columns: repeat(2, minmax(140px, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .scopeGrid {
+                grid-template-columns: 1fr;
+            }
+
+            .actuatorCanvas {
+                height: 155px;
+            }
+        }
+
+</style>
+</head>
+
+<body>
+    <h1>Subharmonic Beat Lab v2.5</h1>
+
+    <div class="row controls">
+        <div class="btns">
+            <button id="startBtn" type="button">Rec loop</button>
+            <button id="playBtn" type="button">Play loop</button>
+            <button id="wavBtn" type="button">Render WAV</button>
+            <span id="loopStatus" class="status idle" aria-live="polite">IDLE</span>
+        </div>
+
+        <div class="control">
+            <label for="masterVol">Master Volume (0–1.0)</label>
+            <input id="masterVol" type="range" min="0" max="1" step="0.05" value="0.5" />
+            <span class="val" id="masterVal"></span>
+        </div>
+<div class="control">
+            <label for="glideS">Glide (s)</label>
+            <input id="glideS" type="range" min="0" max="5" step="0.05" value="0.2" />
+            <span class="val" id="glideVal"></span>
+        </div>
+    </div>
+
+    <div class="row subLabPanel" aria-label="Stereo beat and subharmonic controls">
+        <div class="panelHeader">
+            <div><strong>Stereo Beat + Tactile Difference Field v2.5</strong></div>
+            <div>pressed key + transpose drive the carrier</div>
+        </div>
+
+        <div class="paramGrid">
+            <div class="panelGroup">
+                <div class="panelGroupTitle">Structure</div>
+
+                <div class="control">
+                    <label for="stereoBeatSoloBtn">Field mode</label>
+                    <button id="stereoBeatSoloBtn" class="modeBtn active" type="button" aria-pressed="true">Stereo Beat Solo: ON</button>
+                    <span class="val" id="stereoBeatSoloVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="stereoDeltaHz">Slow Beat Δf</label>
+                    <input id="stereoDeltaHz" type="range" min="0" max="2" step="0.01" value="0.7" />
+                    <span class="val" id="stereoDeltaVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="stereoBeatDepth">Stereo Beat Depth</label>
+                    <input id="stereoBeatDepth" type="range" min="0" max="0.5" step="0.01" value="0.15" />
+                    <span class="val" id="stereoBeatDepthVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="stereoSwayDepth">Stereo Sway Depth</label>
+                    <input id="stereoSwayDepth" type="range" min="0" max="0.5" step="0.01" value="0.2" />
+                    <span class="val" id="stereoSwayDepthVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="stereoSwayPeriodS">Stereo Sway Period</label>
+                    <input id="stereoSwayPeriodS" type="range" min="1" max="30" step="0.5" value="12" />
+                    <span class="val" id="stereoSwayPeriodVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="subRatio">Sub ratio</label>
+                    <select id="subRatio">
+                        <option value="1/2">1/2</option>
+                        <option value="2/3" selected>2/3</option>
+                        <option value="3/4">3/4</option>
+                        <option value="2/5">2/5</option>
+                        <option value="3/5">3/5</option>
+                        <option value="4/5">4/5</option>
+                        <option value="3/7">3/7</option>
+                        <option value="4/7">4/7</option>
+                        <option value="5/8">5/8</option>
+                    </select>
+                    <span class="val" id="subRatioVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="subRDetuneHz">Sub R Detune</label>
+                    <input id="subRDetuneHz" type="range" min="-1" max="1" step="0.02" value="0" />
+                    <span class="val" id="subRDetuneVal"></span>
+                </div>
+            </div>
+
+            <div class="panelGroup">
+                <div class="panelGroupTitle">Levels</div>
+
+                <div class="control">
+                    <label for="baseLevel">Base level</label>
+                    <input id="baseLevel" type="range" min="0" max="0.5" step="0.01" value="0.35" />
+                    <span class="val" id="baseLevelVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="tactileBeatHz">Tactile Difference</label>
+                    <input id="tactileBeatHz" type="range" min="1" max="20" step="0.25" value="10" />
+                    <span class="val" id="tactileBeatVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="tactileDifferenceLevel">Tactile Difference Level</label>
+                    <input id="tactileDifferenceLevel" type="range" min="0" max="0.5" step="0.01" value="0.20" />
+                    <span class="val" id="tactileDifferenceLevelVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="subLevel">Sub level</label>
+                    <input id="subLevel" type="range" min="0" max="0.5" step="0.01" value="0.25" />
+                    <span class="val" id="subLevelVal"></span>
+                </div>
+
+                <div class="control">
+                    <label for="grid5Level">Grid 10 level</label>
+                    <input id="grid5Level" type="range" min="0" max="0.25" step="0.005" value="0" />
+                    <span class="val" id="grid5LevelVal"></span>
+                </div>
+            </div>
+
+            <div id="subReadout" class="subReadout readoutWide"></div>
+        </div>
+    </div>
+
+    <div class="row kbdWrap">
+        <div class="kbdTitle">
+        <div><strong>Source:</strong> A0–A1 / 27.50–55.00 Hz</div>
+        <div><strong>Carrier:</strong> <span id="carrierRangeInfo">27.50–55.00 Hz</span></div>
+        </div>
+
+        <div class="control keyboardTranspose">
+            <label for="transposeSemitones">Transpose</label>
+            <input id="transposeSemitones" type="range" min="0" max="12" step="1" value="0" />
+            <span class="val" id="transposeVal"></span>
+        </div>
+
+        <div id="piano" class="piano" aria-label="Virtual piano keyboard"></div>
+
+        <div class="hint">
+            Touch/hold a key to play. Slide to another key for glides. Output is intentionally low-frequency; keep
+            volume conservative.
+        </div>
+    </div>
+
+    <div class="row scopePanel" aria-label="Live Lissajous visualization">
+        <div class="kbdTitle">
+            <div><strong>Live Lissajous</strong></div>
+            <div>engine-model L/R geometry</div>
+        </div>
+
+        <div class="scopeGrid">
+            <div class="scopeCard">
+                <div class="scopeTitle"><span>Base L/R</span><span id="baseScopeInfo"></span></div>
+                <canvas id="baseScope" class="scopeCanvas"></canvas>
+            </div>
+            <div class="scopeCard">
+                <div class="scopeTitle"><span>Sub L/R</span><span id="subScopeInfo"></span></div>
+                <canvas id="subScope" class="scopeCanvas"></canvas>
+            </div>
+            <div class="scopeCard">
+                <div class="scopeTitle"><span>Tactile Difference L/R</span><span id="differenceScopeInfo"></span></div>
+                <canvas id="differenceScope" class="scopeCanvas"></canvas>
+            </div>
+            <div class="scopeCard">
+                <div class="scopeTitle"><span>Sum L/R</span><span id="sumScopeInfo"></span></div>
+                <canvas id="sumScope" class="scopeCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="actuatorCard" aria-label="Actuator Motion electrical model">
+            <div class="actuatorHeader">
+                <span><strong>Actuator Motion</strong></span>
+                <span id="actuatorMotionInfo">electrical model</span>
+            </div>
+            <canvas id="actuatorMotionCanvas" class="actuatorCanvas"></canvas>
+            <div class="actuatorNote">
+                Pointer angle = Base oscillator phase; pointer length = Stereo Sway. The common Base reference is slowed,
+                while the L/R phase relation and Tactile Difference rotation are real. Electrical model, not measured mechanical motion.
+            </div>
+        </div>
+
+        <div class="hint">X = left channel, Y = right channel. The curves are calculated directly from the active engine routing.</div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // Base Stereo Generator
+        //
+        // Splits the selected base frequency symmetrically between L/R channels.
+        // Stereo Beat Solo adds normalized crossfeed so both outputs contain the
+        // close-frequency pair while keeping opposite direct-channel emphasis.
+        // ============================================================================
+        window.createEqualPowerSwayCurve = function createEqualPowerSwayCurve(depth, invert = false) {
+            const size = 1025;
+            const curve = new Float32Array(size);
+            const safeDepth = Math.max(0, Math.min(0.5, Number(depth) || 0));
+            const direction = invert ? -1 : 1;
+
+            for (let i = 0; i < size; i++) {
+                const x = (i / (size - 1)) * 2 - 1;
+                curve[i] = Math.sqrt(Math.max(0, 1 + direction * safeDepth * x));
+            }
+            return curve;
+        };
+
+        window.createSineGenerator = function createSineGenerator(ctx, state, now, helpers) {
+            const oscL = ctx.createOscillator();
+            const oscR = ctx.createOscillator();
+            const directGainL = ctx.createGain();
+            const directGainR = ctx.createGain();
+            const crossGainLtoR = ctx.createGain();
+            const crossGainRtoL = ctx.createGain();
+            const leftBus = ctx.createGain();
+            const rightBus = ctx.createGain();
+            const swayLfo = ctx.createOscillator();
+            const swayCurveL = ctx.createWaveShaper();
+            const swayCurveR = ctx.createWaveShaper();
+            const merger = ctx.createChannelMerger(2);
+
+            oscL.type = "sine";
+            oscR.type = "sine";
+            directGainL.gain.value = 0;
+            directGainR.gain.value = 0;
+            crossGainLtoR.gain.value = 0;
+            crossGainRtoL.gain.value = 0;
+            leftBus.gain.value = 0;
+            rightBus.gain.value = 0;
+            swayLfo.type = "sine";
+            swayLfo.frequency.value = 1 / 12;
+            swayCurveL.curve = window.createEqualPowerSwayCurve(0);
+            swayCurveR.curve = window.createEqualPowerSwayCurve(0, true);
+
+            oscL.connect(directGainL);
+            directGainL.connect(leftBus);
+            oscR.connect(directGainR);
+            directGainR.connect(rightBus);
+
+            // EN: In Stereo Beat Solo, feed a quiet copy of each oscillator to the
+            // opposite channel. Each output then contains both close frequencies,
+            // so the slow beat exists locally and does not depend only on physical coupling.
+            oscL.connect(crossGainLtoR);
+            crossGainLtoR.connect(rightBus);
+            oscR.connect(crossGainRtoL);
+            crossGainRtoL.connect(leftBus);
+
+            leftBus.connect(merger, 0, 0);
+            rightBus.connect(merger, 0, 1);
+
+            // EN: Convert one sine LFO into complementary equal-power output gains.
+            // gainL² + gainR² stays constant while emphasis moves between channels.
+            swayLfo.connect(swayCurveL);
+            swayLfo.connect(swayCurveR);
+            swayCurveL.connect(leftBus.gain);
+            swayCurveR.connect(rightBus.gain);
+
+            function update(glide = true) {
+                const stereo = subharmonicEngine.getStereoStack(state.baseHz, state);
+                const t = now();
+                const g = glide ? Math.max(0, Number(state.glideS) || 0) : 0;
+                const level = Math.max(0, Math.min(0.5, Number(state.baseLevel) || 0));
+                const depth = state.stereoBeatSolo
+                    ? Math.max(0, Math.min(0.5, Number(state.stereoBeatDepth) || 0))
+                    : 0;
+                const normalization = 1 + depth;
+                const directLevel = level / normalization;
+                const crossLevel = level * depth / normalization;
+                const swayPeriodS = Math.max(0.1, Number(state.stereoSwayPeriodS) || 12);
+                const swayDepth = state.stereoBeatSolo
+                    ? Math.max(0, Math.min(0.5, Number(state.stereoSwayDepth) || 0))
+                    : 0;
+
+                directGainL.gain.setTargetAtTime(directLevel, t, 0.02);
+                directGainR.gain.setTargetAtTime(directLevel, t, 0.02);
+                crossGainLtoR.gain.setTargetAtTime(crossLevel, t, 0.02);
+                crossGainRtoL.gain.setTargetAtTime(crossLevel, t, 0.02);
+                swayLfo.frequency.setTargetAtTime(1 / swayPeriodS, t, 0.05);
+                swayCurveL.curve = window.createEqualPowerSwayCurve(swayDepth);
+                swayCurveR.curve = window.createEqualPowerSwayCurve(swayDepth, true);
+                helpers.setParamSmooth(oscL.frequency, stereo.baseLeftHz, g);
+                helpers.setParamSmooth(oscR.frequency, stereo.baseRightHz, g);
+            }
+
+            return {
+                merger,
+                _oscL: oscL,
+                _oscR: oscR,
+                update,
+                start() { oscL.start(); oscR.start(); swayLfo.start(); },
+                stop(t) {
+                    try { oscL.stop(t); } catch (_) {}
+                    try { oscR.stop(t); } catch (_) {}
+                    try { swayLfo.stop(t); } catch (_) {}
+                }
+            };
+        };
+    </script>
+
+    <script>
+        // ============================================================================
+        // Application State
+        // ============================================================================
+        let ctx, oscL, oscR, merger, masterGain, gateGain, bodyGain;
+        let gen = null;
+        let tactileDifferenceSource = null;
+        let subSource = null;
+        let grid5Source = null;
+        let attackSource = null;
+
+        const state = {
+            running: false,
+            glideS: 0.2,
+            masterVol: 0.5,
+            baseHz: 27.5,
+            playedNoteHz: 27.5,
+            targetCarrierHz: 27.5,
+            targetRelationText: "1:1 direct",
+            transposeSemitones: 0,
+            attackHoldS: 0.15,
+            targetCrossfadeS: 0.60,
+            baseLevel: 0.35,
+            tactileBeatHz: 10.0,
+            tactileDifferenceLevel: 0.20,
+            subRatio: "2/3",
+            subLevel: 0.25,
+            grid5Level: 0.0,
+            stereoDeltaHz: 0.7,
+            stereoBeatSolo: true,
+            stereoBeatDepth: 0.15,
+            stereoSwayDepth: 0.2,
+            stereoSwayPeriodS: 12.0,
+            subRDetuneHz: 0.0,
+            gateOpen: false
+        };
+
+        // ============================================================================
+        // Base + Subharmonic Field Engine
+        //
+        // A single stereo delta is applied to the base frequency. The subharmonic
+        // frequency is then derived from each channel's base frequency, preserving
+        // the selected rational relationship in both channels.
+        // ============================================================================
+        const SUB_MIN_FREQ_HZ = 10.0;
+
+        const subharmonicEngine = {
+            parseRatio(ratioText) {
+                const [mRaw, nRaw] = String(ratioText || "1/2").split("/");
+                const m = Math.max(1, Number(mRaw) || 1);
+                const n = Math.max(1, Number(nRaw) || 2);
+                return { m, n, ratio: m / n };
+            },
+
+            getStereoStack(baseHz, s) {
+                const { m, n, ratio } = this.parseRatio(s.subRatio);
+                const center = Math.max(0.001, Number(baseHz) || 0.001);
+                const delta = Math.max(0, Number(s.stereoDeltaHz) || 0);
+                const half = delta * 0.5;
+                const baseLeftHz = Math.max(0.001, center - half);
+                const baseRightHz = Math.max(0.001, center + half);
+                const subRDetuneHz = Number(s.subRDetuneHz) || 0;
+
+                // EN: Apply the detune as a direct shift of the right sub frequency.
+                // For ratio m/n, this creates n × detune harmonic-grid mismatch.
+                const subDetuneHz = subRDetuneHz;
+                const subLeftRawHz = baseLeftHz * ratio;
+                const subRightRawHz = baseRightHz * ratio + subDetuneHz;
+                const subLeftHz = Math.max(SUB_MIN_FREQ_HZ, subLeftRawHz);
+                const subRightHz = Math.max(SUB_MIN_FREQ_HZ, subRightRawHz);
+                const baseDeltaHz = baseRightHz - baseLeftHz;
+                const subDeltaHz = subRightHz - subLeftHz;
+                const beatLeftHz = Math.abs(baseLeftHz - subLeftHz);
+                const beatRightHz = Math.abs(baseRightHz - subRightHz);
+                const tactileBeatCenterHz = 0.5 * (beatLeftHz + beatRightHz);
+                const swayHz = Math.abs(beatRightHz - beatLeftHz);
+
+                return {
+                    m, n, ratio, center, delta,
+                    subRDetuneHz, subDetuneHz,
+                    baseLeftHz, baseRightHz,
+                    subLeftRawHz, subRightRawHz,
+                    subLeftHz, subRightHz,
+                    baseDeltaHz,
+                    subDeltaHz,
+                    beatLeftHz,
+                    beatRightHz,
+                    tactileBeatCenterHz,
+                    swayHz,
+                    secondOrderBeatHz: swayHz,
+                    repetitionLeftHz: baseLeftHz / n,
+                    repetitionRightHz: baseRightHz / n,
+                    harmonicMismatchLeftHz: n * subLeftRawHz - m * baseLeftHz,
+                    harmonicMismatchRightHz: n * subRightRawHz - m * baseRightHz,
+                    gridHz: center / n,
+                    gridCompletionIndex: 10,
+                    grid5Hz: 10 * center / n,
+                    isLimited: subLeftRawHz < SUB_MIN_FREQ_HZ || subRightRawHz < SUB_MIN_FREQ_HZ
+                };
+            }
+        };
+
+        function createSubharmonicSource(audioCtx) {
+            const oscL = audioCtx.createOscillator();
+            const oscR = audioCtx.createOscillator();
+            const gainL = audioCtx.createGain();
+            const gainR = audioCtx.createGain();
+            const merger = audioCtx.createChannelMerger(2);
+
+            oscL.type = "sine";
+            oscR.type = "sine";
+            gainL.gain.value = 0;
+            gainR.gain.value = 0;
+
+            oscL.connect(gainL);
+            gainL.connect(merger, 0, 0);
+            oscR.connect(gainR);
+            gainR.connect(merger, 0, 1);
+
+            function update(glide = true) {
+                const stereo = subharmonicEngine.getStereoStack(state.baseHz, state);
+                const t = now();
+                const g = glide ? Math.max(0, Number(state.glideS) || 0) : 0;
+                const level = state.stereoBeatSolo
+                    ? 0
+                    : Math.max(0, Math.min(0.5, Number(state.subLevel) || 0));
+
+                gainL.gain.setTargetAtTime(level, t, 0.02);
+                gainR.gain.setTargetAtTime(level, t, 0.02);
+                setParamSmooth(oscL.frequency, stereo.subLeftHz, g);
+                setParamSmooth(oscR.frequency, stereo.subRightHz, g);
+            }
+
+            return {
+                merger,
+                update,
+                start() { oscL.start(); oscR.start(); },
+                stop(t) {
+                    try { oscL.stop(t); } catch (_) {}
+                    try { oscR.stop(t); } catch (_) {}
+                }
+            };
+        }
+
+        function updateSubharmonic(glide = true) {
+            if (subSource) subSource.update(glide);
+        }
+
+        function createTactileDifferenceSource(audioCtx) {
+            const oscL = audioCtx.createOscillator();
+            const oscR = audioCtx.createOscillator();
+            const gainL = audioCtx.createGain();
+            const gainR = audioCtx.createGain();
+            const merger = audioCtx.createChannelMerger(2);
+
+            oscL.type = "sine";
+            oscR.type = "sine";
+            gainL.gain.value = 0;
+            gainR.gain.value = 0;
+            oscL.connect(gainL); gainL.connect(merger, 0, 0);
+            oscR.connect(gainR); gainR.connect(merger, 0, 1);
+
+            function update(glide = true) {
+                const stack = subharmonicEngine.getStereoStack(state.baseHz, state);
+                const t = now();
+                const g = glide ? Math.max(0, Number(state.glideS) || 0) : 0;
+                const differenceHz = Math.max(1, Math.min(20, Number(state.tactileBeatHz) || 10));
+                const level = Math.max(0, Math.min(0.5, Number(state.tactileDifferenceLevel) || 0));
+
+                // EN: Each lower oscillator stays a fixed frequency difference below
+                // its matching base channel. No ratio, crossfeed, or sway is added.
+                gainL.gain.setTargetAtTime(level, t, 0.02);
+                gainR.gain.setTargetAtTime(level, t, 0.02);
+                setParamSmooth(oscL.frequency, Math.max(0.001, stack.baseLeftHz - differenceHz), g);
+                setParamSmooth(oscR.frequency, Math.max(0.001, stack.baseRightHz - differenceHz), g);
+            }
+
+            return {
+                merger,
+                update,
+                start() { oscL.start(); oscR.start(); },
+                stop(t) {
+                    try { oscL.stop(t); } catch (_) {}
+                    try { oscR.stop(t); } catch (_) {}
+                }
+            };
+        }
+
+        function updateTactileDifference(glide = true) {
+            if (tactileDifferenceSource) tactileDifferenceSource.update(glide);
+        }
+
+        function createGrid5Source(audioCtx) {
+            const oscL = audioCtx.createOscillator();
+            const oscR = audioCtx.createOscillator();
+            const gainL = audioCtx.createGain();
+            const gainR = audioCtx.createGain();
+            const merger = audioCtx.createChannelMerger(2);
+
+            oscL.type = "sine";
+            oscR.type = "sine";
+            gainL.gain.value = 0;
+            gainR.gain.value = 0;
+
+            oscL.connect(gainL);
+            gainL.connect(merger, 0, 0);
+            oscR.connect(gainR);
+            gainR.connect(merger, 0, 1);
+
+            function update(glide = true) {
+                const stack = subharmonicEngine.getStereoStack(state.baseHz, state);
+                const t = now();
+                const g = glide ? Math.max(0, Number(state.glideS) || 0) : 0;
+                const level = state.stereoBeatSolo
+                    ? 0
+                    : Math.max(0, Math.min(0.25, Number(state.grid5Level) || 0));
+
+                // EN: Add the 5th grid point by default. If sub or base already sits on
+                // grid index 5, use 10th grid point instead to avoid duplicating it.
+                // The added point is identical in L/R, so it adds no additional stereo beat.
+                gainL.gain.setTargetAtTime(level, t, 0.02);
+                gainR.gain.setTargetAtTime(level, t, 0.02);
+                setParamSmooth(oscL.frequency, stack.grid5Hz, g);
+                setParamSmooth(oscR.frequency, stack.grid5Hz, g);
+            }
+
+            return {
+                merger,
+                update,
+                start() { oscL.start(); oscR.start(); },
+                stop(t) {
+                    try { oscL.stop(t); } catch (_) {}
+                    try { oscR.stop(t); } catch (_) {}
+                }
+            };
+        }
+
+        function updateGrid5(glide = true) {
+            if (grid5Source) grid5Source.update(glide);
+        }
+
+        function createAttackSource(audioCtx) {
+            const oscL = audioCtx.createOscillator();
+            const oscR = audioCtx.createOscillator();
+            const gainL = audioCtx.createGain();
+            const gainR = audioCtx.createGain();
+            const merger = audioCtx.createChannelMerger(2);
+
+            oscL.type = "sine";
+            oscR.type = "sine";
+            gainL.gain.value = 0;
+            gainR.gain.value = 0;
+
+            oscL.connect(gainL);
+            gainL.connect(merger, 0, 0);
+            oscR.connect(gainR);
+            gainR.connect(merger, 0, 1);
+
+            function trigger(noteHz, t, holdS, fadeS) {
+                // EN: The pressed note is a short mono attack cue before the
+                // direct-frequency stereo body stack fades in.
+                oscL.frequency.cancelScheduledValues(t);
+                oscR.frequency.cancelScheduledValues(t);
+                oscL.frequency.setValueAtTime(noteHz, t);
+                oscR.frequency.setValueAtTime(noteHz, t);
+
+                for (const gain of [gainL.gain, gainR.gain]) {
+                    gain.cancelScheduledValues(t);
+                    gain.setValueAtTime(0.40, t);
+                    gain.setValueAtTime(0.40, t + holdS);
+                    gain.linearRampToValueAtTime(0.0, t + holdS + fadeS);
+                }
+            }
+
+            function silence(t) {
+                for (const gain of [gainL.gain, gainR.gain]) {
+                    gain.cancelScheduledValues(t);
+                    gain.setValueAtTime(gain.value, t);
+                    gain.linearRampToValueAtTime(0.0, t + 0.03);
+                }
+            }
+
+            return {
+                merger,
+                trigger,
+                silence,
+                start() { oscL.start(); oscR.start(); },
+                stop(t) {
+                    try { oscL.stop(t); } catch (_) {}
+                    try { oscR.stop(t); } catch (_) {}
+                }
+            };
+        }
+
+        // ============================================================================
+        // Audio Engine
+        //
+        // Builds and controls the live Web Audio graph. The main oscillator and
+        // subharmonic source share one master gain and one keyboard-controlled gate.
+        // ============================================================================
+
+        // ----------------------------------------------------------------------------
+        // Audio parameter helpers
+        // ----------------------------------------------------------------------------
+
+        function now() { return ctx.currentTime; }
+
+        function setParamSmooth(param, target, glideS) {
+            const t0 = now();
+            param.cancelScheduledValues(t0);
+            param.setValueAtTime(param.value, t0);
+            param.linearRampToValueAtTime(target, t0 + Math.max(0, glideS));
+        }
+
+        /**
+         * Update base and subharmonic frequencies together.
+         */
+        function updateFrequencies(glide = true) {
+            // EN: Delegate pitch/phase updates to the current generator.
+            if (!gen) return;
+            gen.update(glide);
+            updateTactileDifference(glide);
+            updateSubharmonic(glide);
+            updateGrid5(glide);
+        }
+
+        function updateMasterVolume() {
+            if (!masterGain) return;
+            masterGain.gain.setValueAtTime(state.masterVol, now());
+        }
+
+        function setGate(on) {
+            // EN: Keep the visualizer tied to the same gate state as the audio.
+            state.gateOpen = !!on;
+
+            // EN: Reset the Lissajous sampling cursor on note start so old silent
+            // time gaps do not create a visual jump.
+            if (state.gateOpen && typeof lissajousState !== "undefined") {
+                lissajousState.lastSampleTimeSec = null;
+            }
+
+            if (!gateGain) return;
+            const t0 = now();
+            gateGain.gain.cancelScheduledValues(t0);
+            gateGain.gain.setValueAtTime(gateGain.gain.value, t0);
+            gateGain.gain.linearRampToValueAtTime(on ? 1.0 : 0.0, t0 + 0.02);
+
+            if (!on) {
+                if (attackSource) attackSource.silence(t0);
+                if (bodyGain) {
+                    bodyGain.gain.cancelScheduledValues(t0);
+                    bodyGain.gain.setValueAtTime(bodyGain.gain.value, t0);
+                    bodyGain.gain.linearRampToValueAtTime(0.0, t0 + 0.03);
+                }
+            }
+        }
+
+        
+        // ----------------------------------------------------------------------------
+        // Playback lifecycle
+        // ----------------------------------------------------------------------------
+
+        async function start() {
+            if (state.running) return;
+
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // --- Master / output chain ---
+            masterGain = ctx.createGain();
+            masterGain.gain.value = state.masterVol;
+
+            bodyGain = ctx.createGain();
+            bodyGain.gain.value = 0.0; // fades in after the played-note attack
+
+            gateGain = ctx.createGain();
+            gateGain.gain.value = 0.0; // off until a key is pressed
+
+            // --- Source generator ---
+        gen = window.createSineGenerator(ctx, state, now, {
+            setParamSmooth,
+        });
+
+            // EN: Keep legacy globals pointing to generator internals for compatibility.
+            oscL = gen._oscL;
+            oscR = gen._oscR;
+            merger = gen.merger;
+
+            gen.merger.connect(bodyGain);
+
+            tactileDifferenceSource = createTactileDifferenceSource(ctx);
+            tactileDifferenceSource.merger.connect(bodyGain);
+
+            subSource = createSubharmonicSource(ctx);
+            subSource.merger.connect(bodyGain);
+
+            grid5Source = createGrid5Source(ctx);
+            grid5Source.merger.connect(bodyGain);
+
+            attackSource = createAttackSource(ctx);
+            attackSource.merger.connect(masterGain);
+
+            bodyGain.connect(masterGain);
+            masterGain.connect(gateGain);
+            gateGain.connect(ctx.destination);
+
+            // Start at current base frequency without glide
+            updateFrequencies(false);
+
+            gen.start();
+            tactileDifferenceSource.start();
+            subSource.start();
+            grid5Source.start();
+            attackSource.start();
+
+            state.running = true;
+        }
+
+
+        
+        function stop() {
+            if (!state.running) return;
+
+            const t0 = now();
+            if (gen) gen.stop(t0);
+            if (tactileDifferenceSource) tactileDifferenceSource.stop(t0);
+            if (subSource) subSource.stop(t0);
+            if (grid5Source) grid5Source.stop(t0);
+            if (attackSource) attackSource.stop(t0);
+
+            ctx.close();
+
+            state.running = false;
+            ctx = null;
+            gen = null;
+            tactileDifferenceSource = null;
+            subSource = null;
+            grid5Source = null;
+            attackSource = null;
+            bodyGain = null;
+        }
+
+
+        function updateTargetKeyHighlight() {
+            const keys = Array.from(document.querySelectorAll(".whiteKey, .blackKey"));
+            for (const key of keys) key.classList.remove("target");
+
+            // EN: Highlight the source key even when the audible carrier is transposed
+            // above the physical keyboard range.
+            const target = Number(state.playedNoteHz);
+            if (!Number.isFinite(target) || !keys.length) return;
+
+            let best = null;
+            for (const key of keys) {
+                const hz = Number(key.dataset.hz);
+                if (!Number.isFinite(hz)) continue;
+                const error = Math.abs(Math.log2(hz / target));
+                if (!best || error < best.error) best = { key, error };
+            }
+            if (best) best.key.classList.add("target");
+        }
+
+        function setBaseHz(hz) {
+            // EN: Compatibility helper for loop playback and older code paths.
+            // The pressed frequency is transposed only at the audio-engine boundary.
+            setPlayedNoteHz(hz, true);
+        }
+
+        function updateCarrierFromPlayedNote() {
+            const sourceNoteHz = Math.max(0.001, Number(state.playedNoteHz) || 0.001);
+            const semitones = Math.max(0, Math.min(12, Math.round(Number(state.transposeSemitones) || 0)));
+            const transposeRatio = Math.pow(2, semitones / 12);
+            const carrierHz = sourceNoteHz * transposeRatio;
+
+            // EN: Keep recorded and displayed key frequencies unchanged. Transpose
+            // only the carrier sent to the body-stack engine.
+            state.transposeSemitones = semitones;
+            state.targetCarrierHz = carrierHz;
+            state.targetRelationText = semitones === 0
+                ? "1:1 direct"
+                : `${transposeRatio.toFixed(3)}:1 (+${semitones} st)`;
+            state.baseHz = carrierHz;
+            state.targetGridHz = carrierHz;
+            state.targetNoteIndex = 1;
+            state.targetCarrierIndex = transposeRatio;
+        }
+
+        function setPlayedNoteHz(noteHz, retriggerAttack = true) {
+            const sourceNoteHz = Math.max(0.001, Number(noteHz) || 0.001);
+
+            // EN: Store the untransposed key frequency so loop recordings remain
+            // reusable while the transpose slider is moved in real time.
+            state.playedNoteHz = sourceNoteHz;
+            updateCarrierFromPlayedNote();
+
+            if (typeof window.refreshLabels === "function") window.refreshLabels();
+            updateTargetKeyHighlight();
+
+            if (!state.running) return;
+
+            const t = now();
+            const holdS = Math.max(0, Number(state.attackHoldS) || 0);
+            const fadeS = Math.max(0.001, Number(state.targetCrossfadeS) || 0.001);
+
+            // EN: Crossfade from the mono attack into the direct-frequency body stack.
+            updateFrequencies(false);
+
+            if (bodyGain && retriggerAttack) {
+                bodyGain.gain.cancelScheduledValues(t);
+                bodyGain.gain.setValueAtTime(0.0, t);
+                bodyGain.gain.setValueAtTime(0.0, t + holdS);
+                bodyGain.gain.linearRampToValueAtTime(1.0, t + holdS + fadeS);
+            } else if (bodyGain) {
+                bodyGain.gain.setTargetAtTime(1.0, t, 0.04);
+            }
+
+            if (attackSource && retriggerAttack) {
+                attackSource.trigger(state.baseHz, t, holdS, fadeS);
+            }
+        }
+
+
+        // ============================================================================
+        // Loop Recorder and Player
+        //
+        // Records monophonic keyboard events as timestamped gate and pitch changes.
+        // Playback re-schedules those events as a repeating phrase.
+        // ============================================================================
+        const loopState = {
+            isRecording: false,
+            isLooping: false,
+
+            recordStartTime: 0,
+
+            // Events are relative to recordStartTime:
+            // { t: seconds, type: 'gateOn'|'gateOff'|'setHz', hz?: number }
+            events: [],
+            loopDuration: 0,
+            hasLoop: false,
+
+            cycleTimerId: null,
+            eventTimerIds: []
+        };
+
+        function setLoopStatus(mode) {
+            // EN: Minimal UI indicator for loop state (idle / recording / looping).
+            const el = document.getElementById("loopStatus");
+            if (!el) return;
+
+            el.classList.remove("idle", "rec", "loop");
+
+            if (mode === "rec") {
+                el.textContent = "REC…";
+                el.classList.add("rec");
+            } else if (mode === "loop") {
+                el.textContent = "LOOPING";
+                el.classList.add("loop");
+            } else {
+                el.textContent = "IDLE";
+                el.classList.add("idle");
+            }
+        }
+
+        function setRecButton(isRecording) {
+            // EN: Single Rec button toggles between "Rec loop" and "Stop rec".
+            const b = document.getElementById("startBtn");
+            if (b) b.textContent = isRecording ? "Stop rec" : "Rec loop";
+        }
+
+        function setPlayButton(isLooping) {
+            // EN: Single Play button toggles between "Play" and "Stop loop".
+            const b = document.getElementById("playBtn");
+            if (b) b.textContent = isLooping ? "Stop loop" : "Play loop";
+        }
+
+        function clearLoopTimers() {
+            if (loopState.cycleTimerId) {
+                window.clearTimeout(loopState.cycleTimerId);
+                loopState.cycleTimerId = null;
+            }
+            // EN: Cancel per-event timeouts scheduled within the cycle.
+            for (const id of loopState.eventTimerIds) window.clearTimeout(id);
+            loopState.eventTimerIds = [];
+        }
+
+        function recordEvent(ev) {
+            // EN: Record only while explicitly recording and audio context exists.
+            if (!loopState.isRecording || !ctx) return;
+
+            const t = ctx.currentTime - loopState.recordStartTime;
+            loopState.events.push({ ...ev, t });
+        }
+
+        function startRecordingLoop() {
+            // EN: Begin a new recording (replaces any existing loop).
+            stopLoopPlayback();
+            loopState.hasLoop = false;
+
+            loopState.isRecording = true;
+            loopState.events = [];
+            loopState.loopDuration = 0;
+
+            loopState.recordStartTime = ctx ? ctx.currentTime : 0;
+
+            setLoopStatus("rec");
+            setRecButton(true);
+            setPlayButton(false); // rec overrides playback UI
+        }
+
+        function cancelRecordingLoop() {
+            // EN: Abort recording and discard what was captured.
+            loopState.isRecording = false;
+            loopState.events = [];
+            loopState.loopDuration = 0;
+            loopState.hasLoop = false;
+
+            setGate(false);
+            setLoopStatus("idle");
+            setRecButton(false);
+            setPlayButton(false);
+        }
+
+        function finalizeRecordingLoop() {
+            // EN: Stop recording and compute loop duration with a fixed tail silence.
+            if (!loopState.isRecording) return;
+
+            loopState.isRecording = false;
+
+            if (!loopState.events.length) {
+                setLoopStatus("idle");
+                setRecButton(false);
+                setPlayButton(false); // EN: No loop captured, keep Play label in default state.
+                return;
+            }
+
+            // EN: Ensure phrase ends with gateOff so playback won't get stuck ON.
+            const last = loopState.events[loopState.events.length - 1];
+            if (last.type !== "gateOff") {
+                const t = ctx ? (ctx.currentTime - loopState.recordStartTime) : last.t;
+                loopState.events.push({ t, type: "gateOff" });
+            }
+
+            // EN: Always silence immediately at finalize time.
+            setGate(false);
+
+            const lastT = loopState.events[loopState.events.length - 1].t;
+            loopState.loopDuration = lastT;
+            loopState.hasLoop = true;
+
+            // Not auto-playing by design; Play button starts playback.
+            setLoopStatus("idle");
+            setRecButton(false);  // EN: Return Rec button label back to "Rec loop" after stopping recording.
+            setPlayButton(false); // EN: Ensure Play label is reset (will read "Play loop" after rename).
+        }
+
+        async function startLoopPlayback() {
+            // EN: Play the recorded loop (if any) until Stop is pressed.
+            if (!loopState.hasLoop || !loopState.loopDuration || !loopState.events.length) return;
+
+            if (!state.running) await start();
+
+            loopState.isLooping = true;
+            setPlayButton(true);
+            setLoopStatus("loop");
+            scheduleLoopCycle();
+        }
+
+        function scheduleLoopCycle() {
+            if (!loopState.isLooping) return;
+
+            clearLoopTimers();
+
+            // EN: Reset gate at cycle start to avoid stuck sound between cycles.
+            setGate(false);
+
+            for (const ev of loopState.events) {
+                const delayMs = Math.max(0, ev.t * 1000);
+
+                const id = window.setTimeout(() => {
+                    if (!loopState.isLooping) return;
+
+                    if (ev.type === "gateOn") {
+                        if (Number.isFinite(ev.hz)) setPlayedNoteHz(ev.hz, true);
+                        setGate(true);
+                    } else if (ev.type === "setHz") {
+                        if (Number.isFinite(ev.hz)) setPlayedNoteHz(ev.hz, true);
+                    } else if (ev.type === "gateOff") {
+                        setGate(false);
+
+                    }
+                }, delayMs);
+
+                loopState.eventTimerIds.push(id);
+            }
+
+            const cycleMs = Math.max(0, loopState.loopDuration * 1000);
+            loopState.cycleTimerId = window.setTimeout(() => {
+                scheduleLoopCycle();
+            }, cycleMs);
+        }
+
+        function stopLoopPlayback() {
+            // EN: Stop loop playback; keep the recorded loop for later Play.
+            loopState.isLooping = false;
+            clearLoopTimers();
+
+            setGate(false);
+            setLoopStatus(loopState.isRecording ? "rec" : "idle");
+            setPlayButton(false);
+        }
+
+        // ============================================================================
+        // Offline WAV Renderer
+        //
+        // Rebuilds a simplified audio graph in OfflineAudioContext and exports
+        // the resulting stereo buffer as 16-bit PCM WAV.
+        // ============================================================================
+
+        function downloadBlob(blob, filename = "render.wav") {
+            // EN: Trigger a client-side download without a server roundtrip.
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function encodeWavFromAudioBuffer(buffer) {
+            // EN: Encode an AudioBuffer as 16-bit PCM WAV (RIFF/WAVE).
+            const numChannels = buffer.numberOfChannels;
+            const sampleRate = buffer.sampleRate;
+            const numFrames = buffer.length;
+
+            const bitsPerSample = 16;
+            const blockAlign = numChannels * (bitsPerSample / 8);
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = numFrames * blockAlign;
+
+            const out = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(out);
+
+            let o = 0;
+            const ws = (s) => { for (let i = 0; i < s.length; i++) view.setUint8(o++, s.charCodeAt(i)); };
+            const u32 = (v) => { view.setUint32(o, v, true); o += 4; };
+            const u16 = (v) => { view.setUint16(o, v, true); o += 2; };
+
+            ws("RIFF"); u32(36 + dataSize); ws("WAVE");
+            ws("fmt "); u32(16); u16(1); u16(numChannels);
+            u32(sampleRate); u32(byteRate); u16(blockAlign); u16(bitsPerSample);
+            ws("data"); u32(dataSize);
+
+            const chData = Array.from({ length: numChannels }, (_, ch) => buffer.getChannelData(ch));
+
+            for (let i = 0; i < numFrames; i++) {
+                for (let ch = 0; ch < numChannels; ch++) {
+                    let x = chData[ch][i];
+                    x = Math.max(-1, Math.min(1, x));
+                    const s = x < 0 ? Math.round(x * 0x8000) : Math.round(x * 0x7fff);
+                    view.setInt16(o, s, true);
+                    o += 2;
+                }
+            }
+
+            return new Blob([out], { type: "audio/wav" });
+        }
+
+        function scheduleGate(offlineCtx, gateGain, t, on) {
+            // EN: Short fade to avoid clicks.
+            const v = on ? 1.0 : 0.0;
+            gateGain.gain.setValueAtTime(gateGain.gain.value, t);
+            gateGain.gain.linearRampToValueAtTime(v, t + 0.02);
+        }
+
+        function scheduleHz(offlineCtx, oscParam, t, hz, glideS) {
+            // EN: Mirror the live glide behavior (linear ramp).
+            const g = Math.max(0, Number(glideS) || 0);
+            oscParam.cancelScheduledValues(t);
+            oscParam.setValueAtTime(oscParam.value, t);
+            if (g > 0) oscParam.linearRampToValueAtTime(hz, t + g);
+            else oscParam.setValueAtTime(hz, t);
+        }
+
+        async function renderOfflineToBuffer({ durationSec = 5, sampleRate = 48000, stateSnapshot, loopSnapshot } = {}) {
+            // EN: Rebuild the simplified base + sub stereo graph in OfflineAudioContext.
+            const channels = 2;
+            const length = Math.floor(durationSec * sampleRate);
+            const offline = new OfflineAudioContext(channels, length, sampleRate);
+            const s = stateSnapshot || { ...state };
+
+            const baseOscL = offline.createOscillator();
+            const baseOscR = offline.createOscillator();
+            const harmonicOscL = offline.createOscillator();
+            const harmonicOscR = offline.createOscillator();
+            const subOscL = offline.createOscillator();
+            const subOscR = offline.createOscillator();
+            const grid5OscL = offline.createOscillator();
+            const grid5OscR = offline.createOscillator();
+            const baseGainL = offline.createGain();
+            const baseGainR = offline.createGain();
+            const baseCrossGainLtoR = offline.createGain();
+            const baseCrossGainRtoL = offline.createGain();
+            const baseBusL = offline.createGain();
+            const baseBusR = offline.createGain();
+            const stereoSwayLfo = offline.createOscillator();
+            const stereoSwayCurveL = offline.createWaveShaper();
+            const stereoSwayCurveR = offline.createWaveShaper();
+            const harmonicGainL = offline.createGain();
+            const harmonicGainR = offline.createGain();
+            const harmonicCrossGainLtoR = offline.createGain();
+            const harmonicCrossGainRtoL = offline.createGain();
+            const harmonicBusL = offline.createGain();
+            const harmonicBusR = offline.createGain();
+            const subGainL = offline.createGain();
+            const subGainR = offline.createGain();
+            const grid5GainL = offline.createGain();
+            const grid5GainR = offline.createGain();
+            const merger = offline.createChannelMerger(2);
+            const masterGain = offline.createGain();
+            const gateGain = offline.createGain();
+
+            for (const osc of [baseOscL, baseOscR, harmonicOscL, harmonicOscR, subOscL, subOscR, grid5OscL, grid5OscR]) osc.type = "sine";
+            const baseLevel = Math.max(0, Math.min(0.5, Number(s.baseLevel) || 0));
+            const fundamentalLevel = baseLevel;
+            const tactileDifferenceLevel = Math.max(0, Math.min(0.5, Number(s.tactileDifferenceLevel) || 0));
+            const tactileBeatHz = Math.max(1, Math.min(20, Number(s.tactileBeatHz) || 10));
+            const beatDepth = s.stereoBeatSolo
+                ? Math.max(0, Math.min(0.5, Number(s.stereoBeatDepth) || 0))
+                : 0;
+            const beatNormalization = 1 + beatDepth;
+            baseGainL.gain.value = fundamentalLevel / beatNormalization;
+            baseGainR.gain.value = baseGainL.gain.value;
+            baseCrossGainLtoR.gain.value = fundamentalLevel * beatDepth / beatNormalization;
+            baseCrossGainRtoL.gain.value = baseCrossGainLtoR.gain.value;
+            harmonicGainL.gain.value = tactileDifferenceLevel;
+            harmonicGainR.gain.value = harmonicGainL.gain.value;
+            harmonicCrossGainLtoR.gain.value = 0;
+            harmonicCrossGainRtoL.gain.value = harmonicCrossGainLtoR.gain.value;
+            const swayDepth = s.stereoBeatSolo
+                ? Math.max(0, Math.min(0.5, Number(s.stereoSwayDepth) || 0))
+                : 0;
+            baseBusL.gain.value = 0;
+            baseBusR.gain.value = 0;
+            harmonicBusL.gain.value = 1;
+            harmonicBusR.gain.value = 1;
+            stereoSwayLfo.type = "sine";
+            stereoSwayLfo.frequency.value = 1 / Math.max(0.1, Number(s.stereoSwayPeriodS) || 12);
+            stereoSwayCurveL.curve = window.createEqualPowerSwayCurve(swayDepth);
+            stereoSwayCurveR.curve = window.createEqualPowerSwayCurve(swayDepth, true);
+            subGainL.gain.value = s.stereoBeatSolo
+                ? 0
+                : Math.max(0, Math.min(0.5, Number(s.subLevel) || 0));
+            subGainR.gain.value = subGainL.gain.value;
+            grid5GainL.gain.value = s.stereoBeatSolo
+                ? 0
+                : Math.max(0, Math.min(0.25, Number(s.grid5Level) || 0));
+            grid5GainR.gain.value = grid5GainL.gain.value;
+            masterGain.gain.value = Number(s.masterVol ?? 0.5);
+            gateGain.gain.value = 0;
+
+            baseOscL.connect(baseGainL); baseGainL.connect(baseBusL);
+            baseOscR.connect(baseGainR); baseGainR.connect(baseBusR);
+            baseOscL.connect(baseCrossGainLtoR); baseCrossGainLtoR.connect(baseBusR);
+            baseOscR.connect(baseCrossGainRtoL); baseCrossGainRtoL.connect(baseBusL);
+            baseBusL.connect(merger, 0, 0);
+            baseBusR.connect(merger, 0, 1);
+            stereoSwayLfo.connect(stereoSwayCurveL);
+            stereoSwayLfo.connect(stereoSwayCurveR);
+            stereoSwayCurveL.connect(baseBusL.gain);
+            stereoSwayCurveR.connect(baseBusR.gain);
+            harmonicOscL.connect(harmonicGainL); harmonicGainL.connect(harmonicBusL);
+            harmonicOscR.connect(harmonicGainR); harmonicGainR.connect(harmonicBusR);
+            harmonicBusL.connect(merger, 0, 0);
+            harmonicBusR.connect(merger, 0, 1);
+            subOscL.connect(subGainL); subGainL.connect(merger, 0, 0);
+            subOscR.connect(subGainR); subGainR.connect(merger, 0, 1);
+            grid5OscL.connect(grid5GainL); grid5GainL.connect(merger, 0, 0);
+            grid5OscR.connect(grid5GainR); grid5GainR.connect(merger, 0, 1);
+            merger.connect(masterGain);
+            masterGain.connect(gateGain);
+            gateGain.connect(offline.destination);
+
+            const applyHzAt = (t, playedNoteHz) => {
+                // EN: Loop events store source-key frequencies. Apply the same
+                // 0...+12 semitone transpose used by the live engine during rendering.
+                const sourceNoteHz = Math.max(0.001, Number(playedNoteHz) || 0.001);
+                const semitones = Math.max(0, Math.min(12, Math.round(Number(s.transposeSemitones) || 0)));
+                const carrierHz = sourceNoteHz * Math.pow(2, semitones / 12);
+                const stack = subharmonicEngine.getStereoStack(carrierHz, s);
+                scheduleHz(offline, baseOscL.frequency, t, stack.baseLeftHz, s.glideS);
+                scheduleHz(offline, baseOscR.frequency, t, stack.baseRightHz, s.glideS);
+                scheduleHz(offline, harmonicOscL.frequency, t, Math.max(0.001, stack.baseLeftHz - tactileBeatHz), s.glideS);
+                scheduleHz(offline, harmonicOscR.frequency, t, Math.max(0.001, stack.baseRightHz - tactileBeatHz), s.glideS);
+                scheduleHz(offline, subOscL.frequency, t, stack.subLeftHz, s.glideS);
+                scheduleHz(offline, subOscR.frequency, t, stack.subRightHz, s.glideS);
+                scheduleHz(offline, grid5OscL.frequency, t, stack.grid5Hz, s.glideS);
+                scheduleHz(offline, grid5OscR.frequency, t, stack.grid5Hz, s.glideS);
+            };
+
+            const initial = subharmonicEngine.getStereoStack(Number(s.baseHz || 27.5), s);
+            baseOscL.frequency.value = initial.baseLeftHz;
+            baseOscR.frequency.value = initial.baseRightHz;
+            harmonicOscL.frequency.value = Math.max(0.001, initial.baseLeftHz - tactileBeatHz);
+            harmonicOscR.frequency.value = Math.max(0.001, initial.baseRightHz - tactileBeatHz);
+            subOscL.frequency.value = initial.subLeftHz;
+            subOscR.frequency.value = initial.subRightHz;
+            grid5OscL.frequency.value = initial.grid5Hz;
+            grid5OscR.frequency.value = initial.grid5Hz;
+
+            if (loopSnapshot && Array.isArray(loopSnapshot.events) && loopSnapshot.events.length) {
+                for (const ev of loopSnapshot.events) {
+                    const t = Math.max(0, Number(ev.t) || 0);
+                    if (t > durationSec) continue;
+                    if (ev.type === "gateOn") {
+                        if (Number.isFinite(ev.hz)) applyHzAt(t, ev.hz);
+                        scheduleGate(offline, gateGain, t, true);
+                    } else if (ev.type === "setHz" && Number.isFinite(ev.hz)) {
+                        applyHzAt(t, ev.hz);
+                    } else if (ev.type === "gateOff") {
+                        scheduleGate(offline, gateGain, t, false);
+                    }
+                }
+            } else {
+                gateGain.gain.setValueAtTime(1, 0.01);
+            }
+
+            for (const osc of [baseOscL, baseOscR, harmonicOscL, harmonicOscR, subOscL, subOscR, grid5OscL, grid5OscR]) {
+                osc.start(0);
+                osc.stop(durationSec);
+            }
+            stereoSwayLfo.start(0);
+            stereoSwayLfo.stop(durationSec);
+
+            return await offline.startRendering();
+        }
+
+        async function renderAndSaveWav({ durationSec = 5, sampleRate = 48000, stateSnapshot, loopSnapshot, filename = "render.wav" } = {}) {
+            const buffer = await renderOfflineToBuffer({ durationSec, sampleRate, stateSnapshot, loopSnapshot });
+            const wavBlob = encodeWavFromAudioBuffer(buffer);
+            downloadBlob(wavBlob, filename);
+        }
+
+
+
+        // ============================================================================
+        // Live Lissajous Visualizer
+        //
+        // Draws the theoretical engine signals directly from the current oscillator
+        // frequencies and levels. This keeps Base, Sub, and Sum views independent
+        // from output gain, gate state, browser analysers, and later audio effects.
+        // ============================================================================
+        const lissajousState = {
+            animationId: null,
+            refreshMs: 33,
+            visualSampleRateHz: 3000,
+            maxPointsPerFrame: 200,
+            baseFadeAlpha: 0.05,
+            minFadeAlpha: 0.025,
+            maxFadeAlpha: 0.11,
+            lastDrawMs: 0,
+            lastSampleTimeSec: null
+        };
+
+
+        const actuatorMotionState = {
+            pulseSampleRateHz: 120,
+            pulseWindowS: 1.0,
+            lastPulseSampleSec: null,
+            pulseDisplayEndSec: null,
+            pulseHistory: []
+        };
+
+        function resizeScopeCanvas(canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = Math.max(1, window.devicePixelRatio || 1);
+            const width = Math.max(1, Math.round(rect.width * dpr));
+            const height = Math.max(1, Math.round(rect.height * dpr));
+            const changed = canvas.width !== width || canvas.height !== height;
+            if (changed) {
+                canvas.width = width;
+                canvas.height = height;
+
+                // EN: Initialize the scope background after resize so the fade trail
+                // starts from the same dark color as the panel.
+                const context = canvas.getContext("2d");
+                context.fillStyle = "#0b1018";
+                context.fillRect(0, 0, width, height);
+            }
+            return { width, height, dpr, changed };
+        }
+
+        function drawScopeAxes(context, width, height, dpr) {
+            const cx = width * 0.5;
+            const cy = height * 0.5;
+            context.strokeStyle = "rgba(143, 183, 255, 0.18)";
+            context.lineWidth = Math.max(1, dpr);
+            context.beginPath();
+            context.moveTo(cx, 0);
+            context.lineTo(cx, height);
+            context.moveTo(0, cy);
+            context.lineTo(width, cy);
+            context.stroke();
+        }
+
+        function getLissajousFadeAlpha(stack) {
+            const maxFreq = Math.max(
+                stack.baseLeftHz, stack.baseRightHz,
+                stack.subLeftHz, stack.subRightHz,
+                1
+            );
+
+            // EN: Lower notes evolve more slowly, so they get a longer phosphor trail.
+            // Higher notes fade faster to avoid overfilling the scope.
+            const alpha = maxFreq / 900;
+            return Math.max(lissajousState.minFadeAlpha, Math.min(lissajousState.maxFadeAlpha, alpha));
+        }
+
+        function fadeLissajousCanvas(canvas, fadeAlpha) {
+            if (!canvas) return null;
+            const { width, height, dpr } = resizeScopeCanvas(canvas);
+            const context = canvas.getContext("2d");
+
+            // EN: Fade old points instead of hard-clearing the canvas.
+            // This gives the scope a soft phosphor-like trail.
+            context.globalCompositeOperation = "source-over";
+            context.fillStyle = `rgba(11, 16, 24, ${fadeAlpha})`;
+            context.fillRect(0, 0, width, height);
+
+            return { context, width, height, dpr };
+        }
+
+        function drawLissajousPoints(canvas, sampleAt, timeStartSec, timeEndSec, shouldDraw, fadeAlpha) {
+            const scope = fadeLissajousCanvas(canvas, fadeAlpha);
+            if (!scope) return;
+
+            const { context, width, height, dpr } = scope;
+            const cx = width * 0.5;
+            const cy = height * 0.5;
+            const scale = Math.min(width, height) * 0.43;
+
+            if (shouldDraw) {
+                // EN: Use absolute visual sampling. The scope redraws at ~30 fps,
+                // but points are sampled from a fixed time grid, like an oscilloscope.
+                context.fillStyle = "rgba(226, 235, 255, 0.56)";
+                const dotRadius = Math.max(0.8 * dpr, 0.8);
+                const sampleRate = Math.max(1, lissajousState.visualSampleRateHz);
+                const sampleDt = 1 / sampleRate;
+                const spanSec = Math.max(0.0001, timeEndSec - timeStartSec);
+                const rawCount = Math.floor(spanSec * sampleRate);
+                const count = Math.max(2, Math.min(lissajousState.maxPointsPerFrame, rawCount));
+
+                for (let i = 0; i < count; i++) {
+                    const t = timeStartSec + i * sampleDt;
+                    if (t > timeEndSec) break;
+                    const point = sampleAt(t);
+                    const x = cx + scale * Math.max(-1, Math.min(1, point.left));
+                    const y = cy - scale * Math.max(-1, Math.min(1, point.right));
+                    context.beginPath();
+                    context.arc(x, y, dotRadius, 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+
+            // EN: Draw axes last so they stay sharp while the signal trail fades.
+            drawScopeAxes(context, width, height, dpr);
+        }
+
+        function resizeActuatorCanvas(canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = Math.max(1, window.devicePixelRatio || 1);
+            const width = Math.max(1, Math.round(rect.width * dpr));
+            const height = Math.max(1, Math.round(rect.height * dpr));
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width;
+                canvas.height = height;
+            }
+            return { width, height, dpr };
+        }
+
+        function getModeledSwayGains(t) {
+            const depth = state.stereoBeatSolo
+                ? Math.max(0, Math.min(0.5, Number(state.stereoSwayDepth) || 0))
+                : 0;
+            const rateHz = 1 / Math.max(0.1, Number(state.stereoSwayPeriodS) || 12);
+            const sway = Math.sin(Math.PI * 2 * rateHz * t);
+            return {
+                left: Math.sqrt(Math.max(0, 1 + depth * sway)),
+                right: Math.sqrt(Math.max(0, 1 - depth * sway))
+            };
+        }
+
+        function getActuatorPhaseModel(stack, t) {
+            // EN: Keep the shared Base reference fixed. The left and right Base
+            // pointers rotate symmetrically in opposite directions at ±Δf/2,
+            // so only their real relative phase motion is shown.
+            const twoPi = Math.PI * 2;
+            const commonPhase = 0;
+            const relativeHalfPhase = Math.PI * stack.baseDeltaHz * t;
+            const differencePhase = twoPi * Math.max(1, Math.min(20, Number(state.tactileBeatHz) || 10)) * t;
+            const sway = getModeledSwayGains(t);
+
+            return {
+                commonPhase,
+                basePhaseLeft: -relativeHalfPhase,
+                basePhaseRight: relativeHalfPhase,
+                lowerRelativePhaseLeft: -differencePhase,
+                lowerRelativePhaseRight: -differencePhase,
+                relativePhase: twoPi * stack.baseDeltaHz * t,
+                swayLeft: sway.left,
+                swayRight: sway.right
+            };
+        }
+
+        function sampleTactileEnvelope(stack, centerTimeSec, channel) {
+            const baseLevel = Math.max(0, Math.min(0.5, Number(state.baseLevel) || 0));
+            const lowerLevel = Math.max(0, Math.min(0.5, Number(state.tactileDifferenceLevel) || 0));
+            if (!state.gateOpen || baseLevel <= 0 || lowerLevel <= 0) return 0;
+
+            const differenceHz = Math.max(1, Math.min(20, Number(state.tactileBeatHz) || 10));
+            const depth = state.stereoBeatSolo
+                ? Math.max(0, Math.min(0.5, Number(state.stereoBeatDepth) || 0))
+                : 0;
+            const normalization = 1 + depth;
+            const direct = 1 / normalization;
+            const cross = depth / normalization;
+            const carrierHz = Math.max(1, stack.center);
+            const windowS = 1 / carrierHz;
+            const sampleCount = 24;
+            let combinedEnergy = 0;
+            let separateEnergy = 0;
+
+            for (let i = 0; i < sampleCount; i++) {
+                const t = centerTimeSec + ((i + 0.5) / sampleCount - 0.5) * windowS;
+                const baseL = Math.sin(Math.PI * 2 * stack.baseLeftHz * t);
+                const baseR = Math.sin(Math.PI * 2 * stack.baseRightHz * t);
+                const sway = getModeledSwayGains(t);
+                const routedBase = channel === "left"
+                    ? sway.left * (direct * baseL + cross * baseR)
+                    : sway.right * (direct * baseR + cross * baseL);
+                const lowerHz = channel === "left"
+                    ? Math.max(0.001, stack.baseLeftHz - differenceHz)
+                    : Math.max(0.001, stack.baseRightHz - differenceHz);
+                const lower = Math.sin(Math.PI * 2 * lowerHz * t);
+                const baseSignal = baseLevel * routedBase;
+                const lowerSignal = lowerLevel * lower;
+                const combined = baseSignal + lowerSignal;
+                combinedEnergy += combined * combined;
+                separateEnergy += baseSignal * baseSignal + lowerSignal * lowerSignal;
+            }
+
+            // EN: The interference cross-term is the physically relevant beat energy.
+            // Positive half-waves produce one visible pulse per difference-frequency cycle.
+            const crossEnergy = Math.max(0, combinedEnergy / sampleCount - separateEnergy / sampleCount);
+            const maxCrossEnergy = Math.max(0.000001, baseLevel * lowerLevel);
+            return Math.max(0, Math.min(1, crossEnergy / maxCrossEnergy));
+        }
+
+        function updateTactilePulseHistory(stack, currentTimeSec) {
+            const level = Math.max(0, Number(state.tactileDifferenceLevel) || 0);
+            if (level <= 0 || Number(state.baseLevel) <= 0) {
+                actuatorMotionState.lastPulseSampleSec = currentTimeSec;
+                actuatorMotionState.pulseDisplayEndSec = currentTimeSec;
+                actuatorMotionState.pulseHistory = [];
+                return { left: 0, right: 0 };
+            }
+
+            // EN: Freeze the latest complete one-second pulse trace after release.
+            // Do not append silence or scroll the stored curve out of view.
+            if (!state.gateOpen) {
+                actuatorMotionState.lastPulseSampleSec = currentTimeSec;
+                return actuatorMotionState.pulseHistory.at(-1) || { left: 0, right: 0 };
+            }
+
+            actuatorMotionState.pulseDisplayEndSec = currentTimeSec;
+            const dt = 1 / actuatorMotionState.pulseSampleRateHz;
+            if (actuatorMotionState.lastPulseSampleSec === null) {
+                actuatorMotionState.lastPulseSampleSec = currentTimeSec - dt;
+            }
+            const firstAllowed = currentTimeSec - 0.10;
+            actuatorMotionState.lastPulseSampleSec = Math.max(firstAllowed, actuatorMotionState.lastPulseSampleSec);
+
+            let latest = actuatorMotionState.pulseHistory.at(-1) || { left: 0, right: 0 };
+            while (actuatorMotionState.lastPulseSampleSec + dt <= currentTimeSec) {
+                const t = actuatorMotionState.lastPulseSampleSec + dt;
+                latest = {
+                    t,
+                    left: sampleTactileEnvelope(stack, t, "left"),
+                    right: sampleTactileEnvelope(stack, t, "right")
+                };
+                actuatorMotionState.pulseHistory.push(latest);
+                actuatorMotionState.lastPulseSampleSec = t;
+            }
+
+            const cutoff = currentTimeSec - actuatorMotionState.pulseWindowS;
+            while (actuatorMotionState.pulseHistory.length && actuatorMotionState.pulseHistory[0].t < cutoff) {
+                actuatorMotionState.pulseHistory.shift();
+            }
+            return latest;
+        }
+
+        function drawPhasePointer(context, x, y, angle, length, dpr, options = {}) {
+            const width = options.width ?? 2;
+            const alpha = options.alpha ?? 0.92;
+            const head = options.head ?? true;
+            const dash = options.dash ?? [];
+            const color = options.color ?? `rgba(226, 235, 255, ${alpha})`;
+            const endX = x + Math.cos(angle - Math.PI / 2) * length;
+            const endY = y + Math.sin(angle - Math.PI / 2) * length;
+
+            context.save();
+            context.strokeStyle = color;
+            context.fillStyle = color;
+            context.lineWidth = Math.max(width * dpr, 1);
+            context.setLineDash(dash.map(value => value * dpr));
+            context.beginPath();
+            context.moveTo(x, y);
+            context.lineTo(endX, endY);
+            context.stroke();
+            context.setLineDash([]);
+
+            if (head) {
+                const headSize = 4.5 * dpr;
+                const pointerAngle = Math.atan2(endY - y, endX - x);
+                context.beginPath();
+                context.moveTo(endX, endY);
+                context.lineTo(
+                    endX - Math.cos(pointerAngle - 0.55) * headSize,
+                    endY - Math.sin(pointerAngle - 0.55) * headSize
+                );
+                context.lineTo(
+                    endX - Math.cos(pointerAngle + 0.55) * headSize,
+                    endY - Math.sin(pointerAngle + 0.55) * headSize
+                );
+                context.closePath();
+                context.fill();
+            }
+            context.restore();
+        }
+
+        function drawActuatorMotion(stack, currentTimeSec) {
+            const canvas = document.getElementById("actuatorMotionCanvas");
+            if (!canvas) return;
+            const { width, height, dpr } = resizeActuatorCanvas(canvas);
+            const context = canvas.getContext("2d");
+            context.clearRect(0, 0, width, height);
+            context.fillStyle = "#070b11";
+            context.fillRect(0, 0, width, height);
+
+            const phase = getActuatorPhaseModel(stack, currentTimeSec);
+            const pulse = updateTactilePulseHistory(stack, currentTimeSec);
+            const active = !!state.gateOpen && Number(state.baseLevel) > 0;
+            const differenceActive = active && Number(state.tactileDifferenceLevel) > 0;
+
+            const leftX = width * 0.28;
+            const rightX = width * 0.72;
+            const centerX = width * 0.50;
+            const actuatorY = height * 0.36;
+            const radius = Math.min(width * 0.09, height * 0.22, 48 * dpr);
+            const baseLength = radius * 0.82;
+            const lowerLength = radius * 0.62;
+
+            const drawHalo = (x, intensity) => {
+                if (!differenceActive || intensity <= 0.001) return;
+                const haloRadius = radius * (1.20 + 0.32 * intensity);
+                const gradient = context.createRadialGradient(x, actuatorY, radius * 0.5, x, actuatorY, haloRadius);
+                gradient.addColorStop(0, `rgba(143, 183, 255, ${0.08 + 0.26 * intensity})`);
+                gradient.addColorStop(1, "rgba(143, 183, 255, 0)");
+                context.fillStyle = gradient;
+                context.beginPath();
+                context.arc(x, actuatorY, haloRadius, 0, Math.PI * 2);
+                context.fill();
+            };
+
+            drawHalo(leftX, pulse.left || 0);
+            drawHalo(rightX, pulse.right || 0);
+
+            context.font = `${11 * dpr}px system-ui, sans-serif`;
+            context.textAlign = "center";
+            context.fillStyle = "rgba(185, 213, 255, 0.90)";
+            context.fillText("LEFT", leftX, 16 * dpr);
+            context.fillText("L/R PHASE", centerX, 16 * dpr);
+            context.fillText("RIGHT", rightX, 16 * dpr);
+
+            const drawDial = (x, baseAngle, lowerRelativeAngle, swayGain) => {
+                context.fillStyle = "rgba(23, 32, 51, 0.96)";
+                context.strokeStyle = "rgba(143, 183, 255, 0.42)";
+                context.lineWidth = Math.max(1 * dpr, 1);
+                context.beginPath();
+                context.arc(x, actuatorY, radius, 0, Math.PI * 2);
+                context.fill();
+                context.stroke();
+
+                // EN: Sway is shown only by the outer ring. Pointer length stays fixed,
+                // so phase angle and amplitude emphasis remain visually separate.
+                const swayNorm = Math.max(0, Math.min(1, (swayGain - Math.sqrt(0.5)) / (Math.sqrt(1.5) - Math.sqrt(0.5))));
+                context.strokeStyle = `rgba(185, 213, 255, ${0.18 + 0.62 * swayNorm})`;
+                context.lineWidth = Math.max((1.5 + 3.5 * swayNorm) * dpr, 1);
+                context.beginPath();
+                context.arc(x, actuatorY, radius * 1.07, 0, Math.PI * 2);
+                context.stroke();
+
+                // EN: The dashed pointer is the fixed common Base reference.
+                drawPhasePointer(context, x, actuatorY, phase.commonPhase, radius * 0.72, dpr, {
+                    width: 1,
+                    alpha: 0.30,
+                    head: false,
+                    dash: [3, 3],
+                    color: "rgba(143, 183, 255, 0.32)"
+                });
+
+                if (active) {
+                    drawPhasePointer(context, x, actuatorY, baseAngle, baseLength, dpr, {
+                        width: 2.4,
+                        color: "rgba(238, 244, 255, 0.94)"
+                    });
+                }
+
+                if (differenceActive) {
+                    // EN: Show Base−Lower phase as a marker on a local ring whose zero
+                    // direction follows the channel's own Base pointer. This avoids
+                    // presenting the lower oscillator as a second absolute phase pointer.
+                    const markerAngle = baseAngle + lowerRelativeAngle;
+                    const ringRadius = radius * 0.70;
+                    context.strokeStyle = "rgba(143, 183, 255, 0.24)";
+                    context.lineWidth = Math.max(1 * dpr, 1);
+                    context.beginPath();
+                    context.arc(x, actuatorY, ringRadius, 0, Math.PI * 2);
+                    context.stroke();
+
+                    const markerX = x + Math.cos(markerAngle - Math.PI / 2) * ringRadius;
+                    const markerY = actuatorY + Math.sin(markerAngle - Math.PI / 2) * ringRadius;
+                    context.fillStyle = "rgba(143, 183, 255, 0.82)";
+                    context.beginPath();
+                    context.arc(markerX, markerY, 3.0 * dpr, 0, Math.PI * 2);
+                    context.fill();
+                }
+
+                context.fillStyle = "rgba(226, 235, 255, 0.90)";
+                context.beginPath();
+                context.arc(x, actuatorY, 2.5 * dpr, 0, Math.PI * 2);
+                context.fill();
+            };
+
+            drawDial(leftX, phase.basePhaseLeft, phase.lowerRelativePhaseLeft, phase.swayLeft);
+            drawDial(rightX, phase.basePhaseRight, phase.lowerRelativePhaseRight, phase.swayRight);
+
+            const wrappedPhase = Math.atan2(Math.sin(phase.relativePhase), Math.cos(phase.relativePhase));
+            const phaseDegrees = wrappedPhase * 180 / Math.PI;
+            const coherence = Math.abs(Math.cos(wrappedPhase * 0.5));
+            const barW = Math.min(width * 0.16, 100 * dpr);
+            const barH = 8 * dpr;
+            const barY = actuatorY - 4 * dpr;
+            context.strokeStyle = "rgba(143, 183, 255, 0.28)";
+            context.strokeRect(centerX - barW / 2, barY, barW, barH);
+            context.fillStyle = "rgba(226, 235, 255, 0.72)";
+            context.fillRect(centerX - barW / 2, barY, barW * coherence, barH);
+            context.fillStyle = "rgba(158, 172, 192, 0.94)";
+            context.font = `${10 * dpr}px system-ui, sans-serif`;
+            context.fillText(active ? `${phaseDegrees >= 0 ? "+" : "−"}${Math.abs(phaseDegrees).toFixed(0)}°` : "idle", centerX, actuatorY + 23 * dpr);
+            context.font = `${9 * dpr}px system-ui, sans-serif`;
+            context.fillText("phase alignment", centerX, actuatorY + 37 * dpr);
+
+            const trackLeft = 18 * dpr;
+            const trackRight = width - 18 * dpr;
+            const trackTop = height * 0.69;
+            const trackBottom = height - 15 * dpr;
+            context.textAlign = "left";
+            context.fillStyle = "rgba(185, 213, 255, 0.90)";
+            context.font = `${10 * dpr}px system-ui, sans-serif`;
+            context.fillText("TACTILE PULSE · REAL TIME · 1 s", trackLeft, trackTop - 7 * dpr);
+            context.strokeStyle = "rgba(143, 183, 255, 0.22)";
+            context.strokeRect(trackLeft, trackTop, trackRight - trackLeft, trackBottom - trackTop);
+
+            const history = actuatorMotionState.pulseHistory;
+            if (history.length > 1 && Number(state.tactileDifferenceLevel) > 0) {
+                const displayEndSec = actuatorMotionState.pulseDisplayEndSec ?? currentTimeSec;
+                const cutoff = displayEndSec - actuatorMotionState.pulseWindowS;
+                const drawLine = (key, alpha) => {
+                    context.strokeStyle = `rgba(226, 235, 255, ${alpha})`;
+                    context.lineWidth = Math.max(1 * dpr, 1);
+                    context.beginPath();
+                    history.forEach((sample, index) => {
+                        const x = trackLeft + ((sample.t - cutoff) / actuatorMotionState.pulseWindowS) * (trackRight - trackLeft);
+                        const y = trackBottom - sample[key] * (trackBottom - trackTop - 2 * dpr) - 1 * dpr;
+                        if (index === 0) context.moveTo(x, y);
+                        else context.lineTo(x, y);
+                    });
+                    context.stroke();
+                };
+                drawLine("left", 0.78);
+                drawLine("right", 0.42);
+            }
+
+            const info = document.getElementById("actuatorMotionInfo");
+            if (info) {
+                info.textContent = state.stereoBeatSolo
+                    ? "phase model · Base + Difference"
+                    : "phase model · Sub/Grid not shown";
+            }
+        }
+
+        function updateLissajousInfo(stack) {
+            const baseInfo = document.getElementById("baseScopeInfo");
+            const subInfo = document.getElementById("subScopeInfo");
+            const differenceInfo = document.getElementById("differenceScopeInfo");
+            const sumInfo = document.getElementById("sumScopeInfo");
+            if (baseInfo) baseInfo.textContent = state.gateOpen ? `Δ ${stack.baseDeltaHz.toFixed(2)} Hz` : "idle";
+            if (subInfo) subInfo.textContent = state.stereoBeatSolo
+                ? "bypassed"
+                : (state.gateOpen ? `Δ ${stack.subDeltaHz.toFixed(2)} Hz` : "idle");
+            if (differenceInfo) differenceInfo.textContent = state.gateOpen
+                ? `−${Number(state.tactileBeatHz).toFixed(2)} Hz`
+                : "idle";
+            if (sumInfo) sumInfo.textContent = state.gateOpen
+                ? (state.stereoBeatSolo ? "Stereo Beat Solo" : `${state.subRatio}`)
+                : "idle";
+        }
+
+        function drawLissajousViews(nowMs = 0) {
+            // EN: Limit visual refresh to about 30 fps. The beat remains visible,
+            // but the point cloud no longer redraws aggressively at display rate.
+            if (nowMs - lissajousState.lastDrawMs < lissajousState.refreshMs) {
+                lissajousState.animationId = requestAnimationFrame(drawLissajousViews);
+                return;
+            }
+            lissajousState.lastDrawMs = nowMs;
+
+            const stack = subharmonicEngine.getStereoStack(state.baseHz, state);
+            const currentTimeSec = state.running && ctx ? ctx.currentTime : performance.now() * 0.001;
+            const isDrawingSignal = !!state.gateOpen;
+
+            let timeStartSec = currentTimeSec;
+            if (isDrawingSignal) {
+                if (lissajousState.lastSampleTimeSec === null) {
+                    lissajousState.lastSampleTimeSec = Math.max(0, currentTimeSec - lissajousState.refreshMs * 0.001);
+                }
+
+                // EN: Draw the elapsed real-time slice using fixed visual sample spacing,
+                // but cap unusually long gaps after tab throttling or pause/resume.
+                timeStartSec = Math.max(
+                    currentTimeSec - 0.08,
+                    lissajousState.lastSampleTimeSec
+                );
+                lissajousState.lastSampleTimeSec = currentTimeSec;
+            } else {
+                lissajousState.lastSampleTimeSec = null;
+            }
+
+            const baseLevel = Math.max(0, Number(state.baseLevel) || 0);
+            const fundamentalLevel = baseLevel;
+            const tactileDifferenceLevel = Math.max(0, Number(state.tactileDifferenceLevel) || 0);
+            const tactileBeatHz = Math.max(1, Math.min(20, Number(state.tactileBeatHz) || 10));
+            const beatDepth = state.stereoBeatSolo
+                ? Math.max(0, Math.min(0.5, Number(state.stereoBeatDepth) || 0))
+                : 0;
+            const beatNormalization = 1 + beatDepth;
+            const directMix = 1 / beatNormalization;
+            const crossMix = beatDepth / beatNormalization;
+            const subLevel = state.stereoBeatSolo ? 0 : Math.max(0, Number(state.subLevel) || 0);
+            const grid5Level = state.stereoBeatSolo ? 0 : Math.max(0, Number(state.grid5Level) || 0);
+            const sumNorm = Math.max(0.001, fundamentalLevel + tactileDifferenceLevel + subLevel + grid5Level);
+            const twoPi = Math.PI * 2;
+            const swayDepth = state.stereoBeatSolo
+                ? Math.max(0, Math.min(0.5, Number(state.stereoSwayDepth) || 0))
+                : 0;
+            const swayRateHz = 1 / Math.max(0.1, Number(state.stereoSwayPeriodS) || 12);
+            const getSwayGains = (t) => {
+                const sway = Math.sin(twoPi * swayRateHz * t);
+                return {
+                    left: Math.sqrt(Math.max(0, 1 + swayDepth * sway)),
+                    right: Math.sqrt(Math.max(0, 1 - swayDepth * sway))
+                };
+            };
+            const fadeAlpha = getLissajousFadeAlpha(stack);
+
+            drawLissajousPoints(document.getElementById("baseScope"), (t) => {
+                const baseL = Math.sin(twoPi * stack.baseLeftHz * t);
+                const baseR = Math.sin(twoPi * stack.baseRightHz * t);
+                const swayGain = getSwayGains(t);
+                return {
+                    left: swayGain.left * (directMix * baseL + crossMix * baseR),
+                    right: swayGain.right * (directMix * baseR + crossMix * baseL)
+                };
+            }, timeStartSec, currentTimeSec, isDrawingSignal && baseLevel > 0, fadeAlpha);
+
+            drawLissajousPoints(document.getElementById("subScope"), (t) => {
+                return {
+                    left: Math.sin(twoPi * stack.subLeftHz * t),
+                    right: Math.sin(twoPi * stack.subRightHz * t)
+                };
+            }, timeStartSec, currentTimeSec, isDrawingSignal && subLevel > 0, fadeAlpha);
+
+            drawLissajousPoints(document.getElementById("differenceScope"), (t) => {
+                const lowerL = Math.sin(twoPi * (stack.baseLeftHz - tactileBeatHz) * t);
+                const lowerR = Math.sin(twoPi * (stack.baseRightHz - tactileBeatHz) * t);
+                return {
+                    left: lowerL,
+                    right: lowerR
+                };
+            }, timeStartSec, currentTimeSec, isDrawingSignal && tactileDifferenceLevel > 0, fadeAlpha);
+
+            drawLissajousPoints(document.getElementById("sumScope"), (t) => {
+                const grid5 = grid5Level * Math.sin(twoPi * stack.grid5Hz * t);
+                const baseL = Math.sin(twoPi * stack.baseLeftHz * t);
+                const baseR = Math.sin(twoPi * stack.baseRightHz * t);
+                const lowerL = Math.sin(twoPi * (stack.baseLeftHz - tactileBeatHz) * t);
+                const lowerR = Math.sin(twoPi * (stack.baseRightHz - tactileBeatHz) * t);
+                const swayGain = getSwayGains(t);
+                const left = fundamentalLevel * swayGain.left * (directMix * baseL + crossMix * baseR)
+                    + tactileDifferenceLevel * lowerL
+                    + subLevel * Math.sin(twoPi * stack.subLeftHz * t)
+                    + grid5;
+                const right = fundamentalLevel * swayGain.right * (directMix * baseR + crossMix * baseL)
+                    + tactileDifferenceLevel * lowerR
+                    + subLevel * Math.sin(twoPi * stack.subRightHz * t)
+                    + grid5;
+                return { left: left / sumNorm, right: right / sumNorm };
+            }, timeStartSec, currentTimeSec, isDrawingSignal, fadeAlpha);
+
+            updateLissajousInfo(stack);
+            drawActuatorMotion(stack, currentTimeSec);
+            lissajousState.animationId = requestAnimationFrame(drawLissajousViews);
+        }
+
+        function startLissajousViews() {
+            if (lissajousState.animationId !== null) return;
+            lissajousState.animationId = requestAnimationFrame(drawLissajousViews);
+        }
+
+        // ============================================================================
+        // User Interface
+        //
+        // Synchronizes DOM controls with application state and forwards user changes
+        // to the live audio engine. Rendering and DSP calculations remain separate.
+        // ============================================================================
+
+        function bindUI() {
+            const $ = (id) => document.getElementById(id);
+            const masterVol = $("masterVol");
+            const glideS = $("glideS");
+            const subRatio = $("subRatio");
+            const stereoDeltaHz = $("stereoDeltaHz");
+            const subRDetuneHz = $("subRDetuneHz");
+            const baseLevel = $("baseLevel");
+            const tactileBeatHz = $("tactileBeatHz");
+            const tactileDifferenceLevel = $("tactileDifferenceLevel");
+            const subLevel = $("subLevel");
+            const grid5Level = $("grid5Level");
+            const transposeSemitones = $("transposeSemitones");
+            const stereoBeatSoloBtn = $("stereoBeatSoloBtn");
+            const stereoBeatDepth = $("stereoBeatDepth");
+            const stereoSwayDepth = $("stereoSwayDepth");
+            const stereoSwayPeriodS = $("stereoSwayPeriodS");
+
+            subRatio.value = state.subRatio;
+            stereoDeltaHz.value = String(state.stereoDeltaHz);
+            subRDetuneHz.value = String(state.subRDetuneHz);
+            baseLevel.value = String(state.baseLevel);
+            tactileBeatHz.value = String(state.tactileBeatHz);
+            tactileDifferenceLevel.value = String(state.tactileDifferenceLevel);
+            subLevel.value = String(state.subLevel);
+            grid5Level.value = String(state.grid5Level);
+            transposeSemitones.value = String(state.transposeSemitones);
+            stereoBeatDepth.value = String(state.stereoBeatDepth);
+            stereoSwayDepth.value = String(state.stereoSwayDepth);
+            stereoSwayPeriodS.value = String(state.stereoSwayPeriodS);
+
+            function setControlInactive(control, inactive) {
+                const row = control?.closest(".control");
+                if (!row) return;
+                row.classList.toggle("disabled", inactive);
+                row.setAttribute("aria-disabled", String(inactive));
+            }
+
+            function formatCycle(hz) {
+                const frequencyHz = Math.abs(Number(hz) || 0);
+                if (frequencyHz < 0.001) return "static";
+                const periodS = 1 / frequencyHz;
+                return periodS >= 1
+                    ? `${periodS.toFixed(2)} s/cycle`
+                    : `${(periodS * 1000).toFixed(0)} ms/cycle`;
+            }
+
+            function formatSignedHz(hz) {
+                const value = Number(hz) || 0;
+                return `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(2)} Hz`;
+            }
+
+            function refreshLabels() {
+                $("masterVal").textContent = Number(state.masterVol).toFixed(3);
+                $("glideVal").textContent = `${Number(state.glideS).toFixed(2)} s`;
+                $("subRatioVal").textContent = state.subRatio;
+                $("stereoDeltaVal").textContent = `${Number(state.stereoDeltaHz).toFixed(2)} Hz`;
+                $("subRDetuneVal").textContent = `${Number(state.subRDetuneHz).toFixed(2)} Hz`;
+                $("baseLevelVal").textContent = Number(state.baseLevel).toFixed(2);
+                $("tactileBeatVal").textContent = `${Number(state.tactileBeatHz).toFixed(2)} Hz`;
+                $("tactileDifferenceLevelVal").textContent = Number(state.tactileDifferenceLevel).toFixed(2);
+                $("subLevelVal").textContent = Number(state.subLevel).toFixed(2);
+                $("grid5LevelVal").textContent = Number(state.grid5Level).toFixed(3);
+                $("stereoBeatDepthVal").textContent = `${(Number(state.stereoBeatDepth) * 100).toFixed(0)} %`;
+                $("stereoSwayDepthVal").textContent = `${(Number(state.stereoSwayDepth) * 100).toFixed(0)} %`;
+                $("stereoSwayPeriodVal").textContent = `${Number(state.stereoSwayPeriodS).toFixed(1)} s`;
+                $("stereoBeatSoloVal").textContent = state.stereoBeatSolo ? "SOLO" : "LAYERS";
+                stereoBeatSoloBtn.textContent = `Stereo Beat Solo: ${state.stereoBeatSolo ? "ON" : "OFF"}`;
+                stereoBeatSoloBtn.classList.toggle("active", state.stereoBeatSolo);
+                stereoBeatSoloBtn.setAttribute("aria-pressed", String(state.stereoBeatSolo));
+                setControlInactive(stereoBeatDepth, !state.stereoBeatSolo);
+                setControlInactive(stereoSwayDepth, !state.stereoBeatSolo);
+                setControlInactive(stereoSwayPeriodS, !state.stereoBeatSolo);
+                for (const control of [subRatio, subRDetuneHz, subLevel, grid5Level]) {
+                    setControlInactive(control, state.stereoBeatSolo);
+                }
+                const semitones = Number(state.transposeSemitones) || 0;
+                const transposeRatio = Math.pow(2, semitones / 12);
+                $("transposeVal").textContent = `+${semitones.toFixed(0)} st`;
+                $("carrierRangeInfo").textContent = `${(27.5 * transposeRatio).toFixed(2)}–${(55 * transposeRatio).toFixed(2)} Hz`;
+
+                const stack = subharmonicEngine.getStereoStack(state.baseHz, state);
+                const solo = !!state.stereoBeatSolo;
+                const slowBeatActive = solo
+                    && Number(state.baseLevel) > 0
+                    && Number(state.stereoBeatDepth) > 0
+                    && Math.abs(stack.baseDeltaHz) >= 0.001;
+                const subActive = !solo && Number(state.subLevel) > 0;
+                const tactileDifferenceActive = Number(state.baseLevel) > 0 && Number(state.tactileDifferenceLevel) > 0;
+                const limitLine = solo
+                    ? `<span class="ok">SOLO:</span> Sub and Grid layers are bypassed`
+                    : (stack.isLimited
+                        ? `<span class="warn">LIMITED:</span> one sub channel was clamped to ${SUB_MIN_FREQ_HZ.toFixed(0)} Hz`
+                        : `<span class="ok">OK:</span> both channel ratios are preserved`);
+
+                $("subReadout").innerHTML = `
+                    <div class="motionHierarchy">
+                        <div class="motionMetric${slowBeatActive ? "" : " inactive"}">
+                            <div class="motionMetricTitle">Slow stereo beat · crossfeed</div>
+                            <div class="motionMetricValue">${slowBeatActive ? `${Math.abs(stack.baseDeltaHz).toFixed(2)} Hz` : "INACTIVE"}</div>
+                            <div class="motionMetricDetail">Depth ${(Number(state.stereoBeatDepth) * 100).toFixed(0)} % · ${formatCycle(stack.baseDeltaHz)}</div>
+                        </div>
+                        <div class="motionMetric${solo && Number(state.stereoSwayDepth) > 0 ? "" : " inactive"}">
+                            <div class="motionMetricTitle">Stereo gain sway · equal power</div>
+                            <div class="motionMetricValue">${solo && Number(state.stereoSwayDepth) > 0 ? `${(Number(state.stereoSwayDepth) * 100).toFixed(0)} %` : "INACTIVE"}</div>
+                            <div class="motionMetricDetail">${Number(state.stereoSwayPeriodS).toFixed(1)} s/cycle · L² + R² remains constant</div>
+                        </div>
+                        <div class="motionMetric${tactileDifferenceActive ? "" : " inactive"}">
+                            <div class="motionMetricTitle">Tactile difference · base−lower</div>
+                            <div class="motionMetricValue">${tactileDifferenceActive ? `${Number(state.tactileBeatHz).toFixed(2)} Hz` : "INACTIVE"}</div>
+                            <div class="motionMetricDetail">${tactileDifferenceActive ? `L / R ${(stack.baseLeftHz - Number(state.tactileBeatHz)).toFixed(2)} / ${(stack.baseRightHz - Number(state.tactileBeatHz)).toFixed(2)} Hz · ${formatCycle(state.tactileBeatHz)}` : "Difference layer level is zero"}</div>
+                        </div>
+                        <div class="motionMetric${subActive ? "" : " inactive"}">
+                            <div class="motionMetricTitle">Tactile beat · base−sub</div>
+                            <div class="motionMetricValue">${subActive ? `${stack.tactileBeatCenterHz.toFixed(2)} Hz` : "INACTIVE"}</div>
+                            <div class="motionMetricDetail">${subActive ? `L / R ${stack.beatLeftHz.toFixed(2)} / ${stack.beatRightHz.toFixed(2)} Hz · ${formatCycle(stack.tactileBeatCenterHz)}` : "Sub layer bypassed or silent"}</div>
+                        </div>
+                        <div class="motionMetric${subActive ? "" : " inactive"}">
+                            <div class="motionMetricTitle">Sway · beat L/R difference</div>
+                            <div class="motionMetricValue">${subActive ? `${stack.swayHz.toFixed(2)} Hz` : "INACTIVE"}</div>
+                            <div class="motionMetricDetail">${subActive ? formatCycle(stack.swayHz) : "Requires the Base + Sub layer"}</div>
+                        </div>
+                        <div class="motionMetric">
+                            <div class="motionMetricTitle">Stereo phase rotation</div>
+                            <div class="motionMetricValue">${solo ? formatSignedHz(stack.baseDeltaHz) : `${formatSignedHz(stack.baseDeltaHz)} / ${formatSignedHz(stack.subDeltaHz)}`}</div>
+                            <div class="motionMetricDetail">${solo ? `Base field · ${formatCycle(stack.baseDeltaHz)} · Sub bypassed` : `Base ${formatCycle(stack.baseDeltaHz)} · Sub ${formatCycle(stack.subDeltaHz)}`}</div>
+                        </div>
+                    </div>
+                    <div class="readoutColumns">
+                        <div class="readoutGroup">
+                            <div class="readoutGroupTitle">Frequencies</div>
+                            <strong>Source note:</strong> ${state.playedNoteHz.toFixed(2)} Hz<br>
+                            <strong>Transpose:</strong> +${semitones.toFixed(0)} st (×${transposeRatio.toFixed(3)})<br>
+                            <strong>Carrier:</strong> ${state.targetCarrierHz.toFixed(2)} Hz<br>
+                            <strong>Stereo gain sway:</strong> ${solo ? `${(Number(state.stereoSwayDepth) * 100).toFixed(0)} % / ${Number(state.stereoSwayPeriodS).toFixed(1)} s` : "bypassed"}<br>
+                            <strong>Body center:</strong> ${state.baseHz.toFixed(2)} Hz<br>
+                            <strong>Base L / R:</strong> ${stack.baseLeftHz.toFixed(2)} / ${stack.baseRightHz.toFixed(2)} Hz<br>
+                            <strong>Difference L / R:</strong> ${tactileDifferenceActive ? `${(stack.baseLeftHz - Number(state.tactileBeatHz)).toFixed(2)} / ${(stack.baseRightHz - Number(state.tactileBeatHz)).toFixed(2)} Hz` : "silent"}<br>
+                            <strong>Sub L / R:</strong> ${solo ? "bypassed" : `${stack.subLeftHz.toFixed(2)} / ${stack.subRightHz.toFixed(2)} Hz`}<br>
+                            <strong>Grid:</strong> ${stack.gridHz.toFixed(2)} Hz<br>
+                            <strong>Grid point:</strong> ${solo ? "bypassed" : `${stack.gridCompletionIndex} × grid = ${stack.grid5Hz.toFixed(2)} Hz`}
+                        </div>
+                        <div class="readoutGroup">
+                            <div class="readoutGroupTitle">Structure &amp; mismatch</div>
+                            <strong>Carrier : source relation:</strong> ${state.targetRelationText}<br>
+                            ${solo
+                                ? `<strong>Sub/Grid settings:</strong> stored, inactive in Solo<br>`
+                                : `<strong>Ratio:</strong> ${state.subRatio}<br>
+                                   <strong>Sub R detune:</strong> ${stack.subRDetuneHz.toFixed(2)} Hz<br>
+                                   <strong>Applied Sub R shift:</strong> ${stack.subDetuneHz.toFixed(3)} Hz<br>
+                                   <strong>Harmonic mismatch L / R:</strong> ${stack.harmonicMismatchLeftHz.toFixed(2)} / ${stack.harmonicMismatchRightHz.toFixed(2)} Hz<br>
+                                   <strong>Nominal grid repetition L / R:</strong> ${stack.repetitionLeftHz.toFixed(2)} / ${stack.repetitionRightHz.toFixed(2)} Hz<br>`}
+                            ${limitLine}
+                        </div>
+                    </div>
+                `;
+            }
+
+            window.refreshLabels = refreshLabels;
+
+            masterVol.addEventListener("input", () => {
+                state.masterVol = Number(masterVol.value);
+                refreshLabels();
+                if (state.running) updateMasterVolume();
+            });
+
+            glideS.addEventListener("input", () => {
+                state.glideS = Number(glideS.value);
+                refreshLabels();
+            });
+
+            stereoBeatSoloBtn.addEventListener("click", () => {
+                state.stereoBeatSolo = !state.stereoBeatSolo;
+                refreshLabels();
+
+                // EN: Preserve all stored layer values; change only the audible routing.
+                if (state.running) {
+                    gen.update(false);
+                    updateTactileDifference(false);
+                    updateSubharmonic(false);
+                    updateGrid5(false);
+                }
+            });
+
+            stereoBeatDepth.addEventListener("input", () => {
+                state.stereoBeatDepth = Number(stereoBeatDepth.value);
+                refreshLabels();
+                if (state.running) gen.update(false);
+            });
+
+            stereoSwayDepth.addEventListener("input", () => {
+                state.stereoSwayDepth = Number(stereoSwayDepth.value);
+                refreshLabels();
+                if (state.running) gen.update(false);
+            });
+
+            stereoSwayPeriodS.addEventListener("input", () => {
+                state.stereoSwayPeriodS = Number(stereoSwayPeriodS.value);
+                refreshLabels();
+                if (state.running) gen.update(false);
+            });
+
+            transposeSemitones.addEventListener("input", () => {
+                state.transposeSemitones = Number(transposeSemitones.value);
+                updateCarrierFromPlayedNote();
+                refreshLabels();
+                updateTargetKeyHighlight();
+
+                // EN: Move a playing loop or held note without retriggering its attack.
+                // The existing Glide control sets the transition time.
+                if (state.running) updateFrequencies(true);
+            });
+
+            subRatio.addEventListener("change", () => {
+                state.subRatio = subRatio.value;
+                refreshLabels();
+                if (state.running) updateFrequencies(true);
+            });
+
+            stereoDeltaHz.addEventListener("input", () => {
+                state.stereoDeltaHz = Number(stereoDeltaHz.value);
+                refreshLabels();
+                if (state.running) updateFrequencies(true);
+            });
+
+            subRDetuneHz.addEventListener("input", () => {
+                state.subRDetuneHz = Number(subRDetuneHz.value);
+                refreshLabels();
+                if (state.running) updateFrequencies(true);
+            });
+
+            baseLevel.addEventListener("input", () => {
+                state.baseLevel = Number(baseLevel.value);
+                refreshLabels();
+                if (state.running) gen.update(false);
+            });
+
+            tactileBeatHz.addEventListener("input", () => {
+                state.tactileBeatHz = Number(tactileBeatHz.value);
+                refreshLabels();
+                if (state.running) updateTactileDifference(true);
+            });
+
+            tactileDifferenceLevel.addEventListener("input", () => {
+                state.tactileDifferenceLevel = Number(tactileDifferenceLevel.value);
+                refreshLabels();
+                if (state.running) updateTactileDifference(false);
+            });
+
+            subLevel.addEventListener("input", () => {
+                state.subLevel = Number(subLevel.value);
+                refreshLabels();
+                updateSubharmonic(false);
+            });
+
+            grid5Level.addEventListener("input", () => {
+                state.grid5Level = Number(grid5Level.value);
+                refreshLabels();
+                updateGrid5(false);
+            });
+
+            $("startBtn").addEventListener("click", async () => {
+                // EN: Toggle recording with the same button.
+                if (!state.running) await start();
+
+                if (!loopState.isRecording) {
+                    startRecordingLoop();
+                } else {
+                    finalizeRecordingLoop();
+                }
+            });
+
+            $("playBtn").addEventListener("click", async () => {
+                // EN: Toggle loop playback with the same button.
+                if (loopState.isLooping) {
+                    stopLoopPlayback();
+                    return;
+                }
+                await startLoopPlayback();
+            });
+
+        $("wavBtn").addEventListener("click", async () => {
+            // EN: Offline render + WAV encode + download based on the current UI state (and optional loop events).
+            const durationSec = (loopState.hasLoop && loopState.loopDuration) ? loopState.loopDuration : 5;
+            const snapState = { ...state };
+            const snapLoop = loopState.hasLoop ? { events: [...loopState.events], loopDuration: loopState.loopDuration } : null;
+
+            try {
+                await renderAndSaveWav({
+                    durationSec,
+                    sampleRate: 48000,
+                    stateSnapshot: snapState,
+                    loopSnapshot: snapLoop,
+                    filename: "subharmonic_beat_lab_v2_5_render.wav",
+                });
+            } catch (err) {
+                console.error("WAV render failed:", err);
+                alert("WAV render failed. See console for details.");
+            }
+        });
+
+
+            refreshLabels();
+            updateTargetKeyHighlight();
+
+            // EN: Initialize Rec/Play button labels to match current loop state.
+            setRecButton(false);
+            setPlayButton(false);
+        }
+
+        // ============================================================================
+        // Initialization
+        // ============================================================================
+
+        bindUI();
+        startLissajousViews();
+
+        // ============================================================================
+        // Virtual Keyboard
+        //
+        // Builds the A0-A1 piano layout and translates pointer gestures into
+        // monophonic note, glide, gate, and loop-recorder events.
+        // ============================================================================
+
+        // ----------------------------------------------------------------------------
+        // Note layout and frequency mapping
+        // ----------------------------------------------------------------------------
+        const A0 = 27.5;
+        const SEMITONE = Math.pow(2, 1 / 12);
+
+        function hzForSemitoneFromA0(n) {
+            return A0 * Math.pow(SEMITONE, n);
+        }
+
+        // White keys: A B C D E F G (in this register: A0 B0 C1 D1 E1 F1 G1)
+        const whiteKeys = [
+            { note: "A0", n: 0 },
+            { note: "B0", n: 2 },
+            { note: "C1", n: 3 },
+            { note: "D1", n: 5 },
+            { note: "E1", n: 7 },
+            { note: "F1", n: 8 },
+            { note: "G1", n: 10 },
+            { note: "A1", n: 12 }
+        ];
+
+        // Black keys positions (between whites): A# C# D# F# G#
+        // Each has an anchor index referencing the left white key column.
+        const blackKeys = [
+            { note: "A#0", n: 1, leftWhiteIndex: 0 },
+            { note: "C#1", n: 4, leftWhiteIndex: 2 },
+            { note: "D#1", n: 6, leftWhiteIndex: 3 },
+            { note: "F#1", n: 9, leftWhiteIndex: 5 },
+            { note: "G#1", n: 11, leftWhiteIndex: 6 }
+        ];
+
+    let resizeBound = false;
+    let resizeRaf = 0;
+
+        function buildPiano() {
+            const piano = document.getElementById("piano");
+            piano.innerHTML = "";
+
+            // Add white keys as grid children
+            for (const wk of whiteKeys) {
+                const hz = hzForSemitoneFromA0(wk.n);
+
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "whiteKey";
+                btn.dataset.hz = String(hz);
+                btn.dataset.note = wk.note;
+
+                const footer = document.createElement("div");
+                footer.className = "footer";
+                footer.innerHTML = `<span>${wk.note}</span><span class="hz">${hz.toFixed(2)} Hz</span>`;
+                btn.appendChild(footer);
+
+                attachKeyHandlers(btn, hz);
+
+                piano.appendChild(btn);
+            }
+
+            // Add black keys as absolute positioned elements
+            // Compute width per white key based on container width (after layout).
+            requestAnimationFrame(() => {
+                const rect = piano.getBoundingClientRect();
+                const whiteW = rect.width / 8;
+
+                // Mustan koskettimen leveys suhteessa whiteW:hen.
+                // Pidä tämä linjassa CSS:n 0.48 kanssa.
+                const blackW = whiteW * 0.48;
+
+                for (const bk of blackKeys) {
+                    const hz = hzForSemitoneFromA0(bk.n);
+
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "blackKey";
+                    btn.dataset.hz = String(hz);
+                    btn.dataset.note = bk.note;
+
+                    // Center black key between two white keys:
+                    // boundary at (leftWhiteIndex + 1) * whiteW, then shift left by half black width.
+                    // Clamp black-key x so it never overflows the piano container
+                    let left = (bk.leftWhiteIndex + 1) * whiteW - (blackW / 2);
+                    left = Math.max(0, Math.min(left, rect.width - blackW));
+
+                    btn.style.left = `${left}px`;
+                    btn.style.width = `${blackW}px`;
+
+
+                    const label = document.createElement("div");
+                    label.className = "label";
+                    label.innerHTML = `<span>${bk.note}</span><span class="hz">${hz.toFixed(2)} Hz</span>`;
+                    btn.appendChild(label);
+
+                    attachKeyHandlers(btn, hz);
+                    piano.appendChild(btn);
+                }
+            });
+
+            // Rebuild on resize to keep black-key positions accurate
+            if (!resizeBound) {
+                resizeBound = true;
+                window.addEventListener("resize", () => {
+                    cancelAnimationFrame(resizeRaf);
+                    resizeRaf = requestAnimationFrame(() => buildPiano());
+                }, { passive: true });
+            }
+        }
+
+        // ----------------------------------------------------------------------------
+        // Pointer interaction
+        // ----------------------------------------------------------------------------
+
+        // Pointer tracking: allow "slide to another key" by moving finger
+        let activePointerId = null;
+        let activeEl = null;
+
+        function attachKeyHandlers(el, hz) {
+            const down = async (e) => {
+                e.preventDefault();
+
+                if (activePointerId !== null && activePointerId !== e.pointerId) return;
+
+                activePointerId = e.pointerId;
+                activeEl = el;
+                el.classList.add("active");
+
+                if (!state.running) await start();
+
+                setPlayedNoteHz(hz, true);
+                setGate(true);
+
+                // EN: Record note start.
+                recordEvent({ type: "gateOn", hz });
+
+                try { el.setPointerCapture(e.pointerId); } catch (_) { }
+            };
+
+            const up = (e) => {
+                e.preventDefault();
+                if (activePointerId !== e.pointerId) return;
+
+                if (activeEl) activeEl.classList.remove("active");
+                activeEl = null;
+                activePointerId = null;
+
+                setGate(false);
+
+                // EN: Record note end.
+                recordEvent({ type: "gateOff" });
+            };
+
+            const move = (e) => {
+                if (activePointerId !== e.pointerId) return;
+
+                // Hit-test under finger; switch key if different
+                const x = e.clientX;
+                const y = e.clientY;
+                const under = document.elementFromPoint(x, y);
+
+                if (!under) return;
+
+                const keyEl = under.classList?.contains("whiteKey") || under.classList?.contains("blackKey")
+                    ? under
+                    : under.closest?.(".whiteKey, .blackKey");
+
+                if (!keyEl || keyEl === activeEl) return;
+
+                const newHz = Number(keyEl.dataset.hz);
+                if (!Number.isFinite(newHz)) return;
+
+                if (activeEl) activeEl.classList.remove("active");
+                activeEl = keyEl;
+                activeEl.classList.add("active");
+
+                setPlayedNoteHz(newHz, true); // EN: Retrigger attack-to-target on slide.
+
+                // EN: Record pitch change while gate is held (monophonic slide).
+                recordEvent({ type: "setHz", hz: newHz });
+            };
+
+            el.addEventListener("pointerdown", down, { passive: false });
+            el.addEventListener("pointerup", up, { passive: false });
+            el.addEventListener("pointercancel", up, { passive: false });
+            el.addEventListener("pointermove", move, { passive: false });
+            el.addEventListener("pointerleave", (e) => {
+                // If pointer capture is active, we still get moves; ignore leave.
+                // If not captured, releasing outside should stop sound.
+                if (activePointerId === null) return;
+            }, { passive: true });
+        }
+
+        // ----------------------------------------------------------------------------
+        // Final initialization
+        // ----------------------------------------------------------------------------
+
+        buildPiano();
+    </script>
+</body>
+
+</html>
