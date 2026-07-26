@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AM / Sideband Phase Lab v0.6</title>
+<style>
+:root{color-scheme:dark;--bg:#090b10;--panel:#111722;--inner:#0b1018;--line:#263247;--text:#f2f5fb;--muted:#aab8cc;--accent:#8fb7ff;--warn:#ffcc7a}
+*{box-sizing:border-box}body{margin:0;padding:12px;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}h1{margin:0 0 3px;font-size:19px}p{margin:3px 0}.subtitle{color:var(--muted);font-size:12px}.panel{margin-top:9px;padding:9px;background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:0 10px 34px rgba(0,0,0,.22)}.modeRow,.actionRow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}button,select{padding:8px 10px;color:var(--text);background:#172033;border:1px solid #33415c;border-bottom-width:3px;border-radius:9px;font:inherit;font-size:13px}button:active{transform:translateY(1px);border-bottom-width:2px}.modeBtn.active{background:#20314d;border-color:var(--accent);box-shadow:0 0 0 1px rgba(143,183,255,.3)}#gateBtn.active{background:#173526;border-color:#4b9669}.status{padding:5px 8px;border:1px solid #33415c;border-radius:999px;color:var(--muted);font-size:11px}.labGrid{display:grid;grid-template-columns:minmax(520px,1.05fr) minmax(420px,.95fr);gap:9px;align-items:start}.controlPanel,.visualPanel{min-width:0}.grid{display:grid;grid-template-columns:repeat(2,minmax(250px,1fr));gap:8px}.group{display:grid;gap:6px;padding:8px;background:var(--inner);border:1px solid var(--line);border-radius:9px}.groupTitle{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#b9d5ff}.control{display:grid;grid-template-columns:minmax(120px,145px) minmax(100px,1fr) 66px;gap:7px;align-items:center}.control label{font-size:12px;line-height:1.15}.control input[type=range]{width:100%;accent-color:var(--accent)}.control select{min-width:0;width:100%}.val{text-align:right;font-variant-numeric:tabular-nums;font-size:11px;color:#d9e4f8}.readout{margin-top:8px;padding:8px;background:var(--inner);border:1px solid var(--line);border-radius:9px;font-size:11px;line-height:1.38;font-variant-numeric:tabular-nums}.readoutGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.readout strong{color:white}.ok{color:#9fd3ff}.warn{color:var(--warn)}.scopeGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:7px}.scopeCard{padding:7px;background:var(--inner);border:1px solid var(--line);border-radius:9px;min-width:0}.fftCard{padding:8px}.scopeTitle{display:flex;justify-content:space-between;gap:6px;margin-bottom:5px;color:#d9e4f8;font-size:11px;white-space:nowrap}.scope{display:block;width:100%;height:118px;background:#070b11;border-radius:7px}.fftScope{height:330px}.spectrumScope{height:158px;touch-action:none;cursor:crosshair}.phasePlaneScope{height:210px}.hint{margin-top:6px;color:var(--muted);font-size:11px;line-height:1.35}.concept{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.concept>div{padding:7px;background:var(--inner);border:1px solid var(--line);border-radius:8px;font-size:11px;line-height:1.35}.concept code{color:#c9dcff}.footer{margin-top:7px;color:var(--muted);font-size:10px}@media(max-width:1080px){.labGrid{grid-template-columns:1fr}.fftScope{height:250px}}@media(max-width:760px){.grid,.readoutGrid,.concept{grid-template-columns:1fr}.scopeGrid{grid-template-columns:1fr 1fr}.control{grid-template-columns:minmax(110px,135px) minmax(90px,1fr) 62px}}@media(max-width:520px){body{padding:8px}.modeRow button{flex:1 1 45%}.scopeGrid{grid-template-columns:1fr}.scope{height:105px}.fftScope{height:220px}.control{grid-template-columns:1fr 62px}.control label{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<h1>AM / Sideband Phase Lab v0.6</h1>
+<p class="subtitle">Same frequencies · controlled spectral amplitudes · different sideband structure or phase relation</p>
+
+<section class="panel">
+  <div class="modeRow" aria-label="Signal mode">
+    <button class="modeBtn active" data-mode="carrier">1. Carrier only</button>
+    <button class="modeBtn" data-mode="lower">2. Carrier + Lower</button>
+    <button class="modeBtn" data-mode="am">3. Pure AM</button>
+    <button class="modeBtn" data-mode="phase">4. Same Spectrum / Phase Shift</button>
+  </div>
+  <div class="actionRow" style="margin-top:10px">
+    <button id="gateBtn">Play / Gate</button>
+    <button id="wavBtn">Render 5 s WAV</button>
+    <span id="status" class="status">AUDIO IDLE</span>
+  </div>
+</section>
+
+<div class="labGrid">
+<section class="panel controlPanel">
+ <div class="grid">
+  <div class="group">
+   <div class="groupTitle">Frequencies &amp; phase</div>
+   <div class="control"><label for="fc">Carrier Frequency fc</label><input id="fc" type="range" min="20" max="80" step="0.1" value="50"><span class="val" id="fcVal"></span></div>
+   <div class="control"><label for="fm">Difference / Modulation fm</label><input id="fm" type="range" min="1" max="30" step="0.1" value="10"><span class="val" id="fmVal"></span></div>
+   <div class="control"><label for="gridEnabled">Harmonic Grid + Drift</label><select id="gridEnabled"><option value="off">off</option><option value="on">on</option></select><span class="val" id="gridEnabledVal"></span></div>
+   <div class="control gridControl"><label for="gridOrder">Grid order N</label><input id="gridOrder" type="range" min="2" max="20" step="1" value="5"><span class="val" id="gridOrderVal"></span></div>
+   <div class="control gridControl"><label for="gridOffset">Grid offset δ</label><input id="gridOffset" type="range" min="-2" max="2" step="0.01" value="1"><span class="val" id="gridOffsetVal"></span></div>
+   <div class="control gridControl"><label for="gridDisplay">Grid display</label><select id="gridDisplay"><option value="local">local</option><option value="full">full</option></select><span class="val" id="gridDisplayVal"></span></div>
+   <div class="control"><label for="carrierPhase">Carrier phase φc</label><input id="carrierPhase" type="range" min="-180" max="180" step="1" value="0"><span class="val" id="carrierPhaseVal"></span></div>
+   <div class="control"><label for="sidebandPhase">Sideband Phase</label><input id="sidebandPhase" type="range" min="-180" max="180" step="1" value="90"><span class="val" id="sidebandPhaseVal"></span></div>
+  </div>
+  <div class="group">
+   <div class="groupTitle">Levels &amp; comparison</div>
+   <div class="control"><label for="carrierLevel">Carrier Level</label><input id="carrierLevel" type="range" min="0" max="0.6" step="0.005" value="0.25"><span class="val" id="carrierLevelVal"></span></div>
+   <div class="control"><label for="sidebandLevel">Sideband Level (each)</label><input id="sidebandLevel" type="range" min="0" max="0.3" step="0.005" value="0.08"><span class="val" id="sidebandLevelVal"></span></div>
+   <div class="control"><label for="master">Master Volume</label><input id="master" type="range" min="0" max="0.8" step="0.01" value="0.30"><span class="val" id="masterVal"></span></div>
+   <div class="control"><label for="normalization">Normalization</label><select id="normalization"><option value="rms">equal RMS</option><option value="peak">equal peak</option><option value="none">none</option></select><span class="val" id="normalizationVal"></span></div>
+  </div>
+ </div>
+ <div id="readout" class="readout"></div>
+ <div class="scopeGrid">
+  <div class="scopeCard"><div class="scopeTitle"><span>Waveform</span><span id="waveInfo"></span></div><canvas id="wave" class="scope"></canvas></div>
+  <div class="scopeCard"><div class="scopeTitle"><span>Envelope</span><span id="envInfo"></span></div><canvas id="envelope" class="scope"></canvas></div>
+  <div class="scopeCard"><div class="scopeTitle"><span>1 s pulse history</span><span id="historyInfo"></span></div><canvas id="history" class="scope"></canvas></div>
+ </div>
+</section>
+
+<section class="panel visualPanel">
+ <div class="scopeCard fftCard"><div class="scopeTitle"><span>Live FFT · 500 ms · log frequency</span><span id="fftInfo"></span></div><canvas id="fft" class="scope fftScope"></canvas></div>
+ <div class="scopeCard" style="margin-top:7px"><div class="scopeTitle"><span>Component spectrum · amplitude + phase</span><span id="spectrumInfo"></span></div><canvas id="spectrum" class="scope spectrumScope"></canvas></div>
+ <div class="scopeCard" style="margin-top:7px"><div class="scopeTitle"><span>Instantaneous phase plane</span><span id="phasePlaneInfo"></span></div><canvas id="phasePlane" class="scope phasePlaneScope"></canvas></div>
+ <div class="hint">FFT: latest 500 ms output, Hann window, 10–160 Hz log axis and −100…0 dB range. Dim phase trace is carrier-referenced. Harmonic grid lines show k·g; highlighted lines are N−1, N and N+1. Drag spectrum handles horizontally for frequency or grid offset and vertically for level.</div>
+</section>
+</div>
+
+<section class="panel concept">
+ <div><strong>Carrier + Lower</strong><br><code>fc + (fc − fm)</code><br>Two spectral components. This is not conventional AM.</div>
+ <div><strong>Pure AM</strong><br><code>A[1+m cos(2πfmt)]cos(2πfct)</code><br>Carrier plus two equal, symmetric, in-phase sidebands.</div>
+ <div><strong>Same Spectrum / Phase Shift</strong><br>Same three frequencies and raw amplitudes as Pure AM. Both sidebands rotate together relative to the carrier; this is not claimed to be exact FM.</div>
+</section>
+<div class="footer">Mono signal is sent equally to both output channels. Start at low actuator and amplifier gain.</div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id); const TAU=Math.PI*2;
+const state={mode:'carrier',fc:50,fm:10,gridEnabled:false,gridOrder:5,gridOffset:1,gridDisplay:'local',carrierLevel:.25,sidebandLevel:.08,master:.30,normalization:'rms',carrierPhaseDeg:0,sidebandPhaseDeg:90,gate:false};
+let audioCtx=null,worklet=null,masterGain=null; let lastVisualMs=0,lastFftMs=0;
+const ENV_RATE=1000, HISTORY_SECONDS=1, FFT_SECONDS=.5;
+let envRing=new Float32Array(ENV_RATE*HISTORY_SECONDS),envWrite=0,envCount=0,historyFrozen=true;
+let audioRing=new Float32Array(48000),audioWrite=0,audioCount=0,audioSampleRate=48000;
+
+function rad(d){return d*Math.PI/180} function deg(r){return r*180/Math.PI}
+function wrapDeg(v){let x=((v+180)%360+360)%360-180; return Math.abs(x)<.0001?0:x}
+function gridFundamental(s=state){return s.fc/Math.max(2,Math.round(s.gridOrder))}
+function effectiveFm(s=state){const raw=s.gridEnabled?gridFundamental(s)+s.gridOffset:s.fm;return Math.max(1,Math.min(30,Math.min(s.fc-.1,raw)))}
+function gridData(s=state){const N=Math.max(2,Math.round(s.gridOrder)),g=s.fc/N,fm=effectiveFm(s),delta=fm-g;return{N,g,fm,delta,period:delta===0?Infinity:1/Math.abs(delta),lowerGrid:(N-1)*g,carrierGrid:N*g,upperGrid:(N+1)*g}}
+function componentModel(s=state,mode=s.mode){
+ const fc=Math.max(20,s.fc),fm=effectiveFm(s); const lower=Math.max(.01,fc-fm),upper=fc+fm;
+ const pc=rad(s.carrierPhaseDeg); let pl=pc,pu=pc;
+ if(mode==='phase'){pl=pc+rad(s.sidebandPhaseDeg);pu=pc+rad(s.sidebandPhaseDeg)}
+ const c=[];
+ if(mode==='carrier'||mode==='lower'||mode==='am'||mode==='phase')c.push({name:'Carrier',f:fc,a:s.carrierLevel,p:pc});
+ if(mode==='lower'||mode==='am'||mode==='phase')c.push({name:'Lower',f:lower,a:s.sidebandLevel,p:pl});
+ if(mode==='am'||mode==='phase')c.push({name:'Upper',f:upper,a:s.sidebandLevel,p:pu});
+ return c;
+}
+function sampleSignal(comps,t){let x=0;for(const c of comps)x+=c.a*Math.cos(TAU*c.f*t+c.p);return x}
+function sampleEnvelope(comps,t){let re=0,im=0;for(const c of comps){const q=TAU*c.f*t+c.p;re+=c.a*Math.cos(q);im+=c.a*Math.sin(q)}return Math.hypot(re,im)}
+function rawMetrics(comps){
+ const sr=12000,dur=2,n=sr*dur;let ss=0,peak=0;
+ for(let i=0;i<n;i++){const x=sampleSignal(comps,i/sr);ss+=x*x;peak=Math.max(peak,Math.abs(x))}
+ return{rms:Math.sqrt(ss/n),peak};
+}
+function normalizationData(s=state,mode=s.mode){
+ const comps=componentModel(s,mode),raw=rawMetrics(comps); const targetRms=Math.max(.000001,s.carrierLevel/Math.sqrt(2)); const targetPeak=Math.max(.000001,s.carrierLevel);
+ let gain=1;if(s.normalization==='rms'&&raw.rms>0)gain=targetRms/raw.rms;if(s.normalization==='peak'&&raw.peak>0)gain=targetPeak/raw.peak;
+ const safety=raw.peak>0?0.98/raw.peak:1; const limited=gain>safety; gain=Math.min(gain,safety);
+ return{comps,raw,gain,limited,normalizedRms:raw.rms*gain,normalizedPeak:raw.peak*gain,targetRms,targetPeak};
+}
+function payload(){const n=normalizationData();return{...state,normGain:n.gain,components:n.comps.map(c=>({f:c.f,a:c.a,p:c.p}))}}
+
+const workletSource=`class SidebandLabProcessor extends AudioWorkletProcessor{constructor(){super();this.current={components:[],normGain:1,master:0,gate:false};this.old=null;this.fade=1;this.fadeStep=1;this.t=0;this.raw=new Float32Array(1024);this.rawPos=0;this.envStep=Math.max(1,Math.round(sampleRate/1000));this.envPhase=0;this.env=new Float32Array(256);this.envPos=0;this.offReported=true;this.port.onmessage=e=>{const next=e.data;if(next.type==='state'){this.old=this.current;this.current=next.state;this.fade=0;this.fadeStep=1/Math.max(1,Math.round(sampleRate*.02));if(next.state.gate)this.offReported=false;}}}pair(st,t){if(!st||!st.gate)return[0,0,0];let x=0,re=0,im=0;for(const c of st.components){const q=2*Math.PI*c.f*t+c.p,ca=Math.cos(q),sa=Math.sin(q);x+=c.a*ca;re+=c.a*ca;im+=c.a*sa}const g=st.normGain*st.master;return[x*g,re*g,im*g]}flush(){if(this.rawPos){const r=this.raw.slice(0,this.rawPos);this.port.postMessage({type:'samples',sampleRate,raw:r},[r.buffer]);this.rawPos=0}if(this.envPos){const e=this.env.slice(0,this.envPos);this.port.postMessage({type:'envelope',values:e},[e.buffer]);this.envPos=0}}process(i,o){const out=o[0];if(!out||!out[0])return true;for(let k=0;k<out[0].length;k++){let a=1,cur=this.pair(this.current,this.t),old=[0,0,0];if(this.fade<1&&this.old){a=.5-.5*Math.cos(Math.PI*this.fade);old=this.pair(this.old,this.t);this.fade=Math.min(1,this.fade+this.fadeStep)}const y=old[0]*(1-a)+cur[0]*a,re=old[1]*(1-a)+cur[1]*a,im=old[2]*(1-a)+cur[2]*a,env=Math.hypot(re,im);out[0][k]=y;if(out[1])out[1][k]=y;this.raw[this.rawPos++]=y;if(this.rawPos===this.raw.length)this.flush();if(++this.envPhase>=this.envStep){this.envPhase=0;this.env[this.envPos++]=env;if(this.envPos===this.env.length)this.flush()}this.t+=1/sampleRate}if(this.fade>=1&&!this.current.gate&&!this.offReported){this.flush();this.offReported=true;this.port.postMessage({type:'gateSettledOff'})}return true}}registerProcessor('sideband-lab',SidebandLabProcessor);`;
+async function ensureAudio(){
+ if(audioCtx){if(audioCtx.state==='suspended')await audioCtx.resume();return}
+ audioCtx=new AudioContext({latencyHint:'interactive'}); const blob=new Blob([workletSource],{type:'application/javascript'}); const url=URL.createObjectURL(blob);
+ try{await audioCtx.audioWorklet.addModule(url)}finally{URL.revokeObjectURL(url)}
+ worklet=new AudioWorkletNode(audioCtx,'sideband-lab',{numberOfOutputs:1,outputChannelCount:[2]}); masterGain=audioCtx.createGain(); masterGain.gain.value=1; worklet.connect(masterGain).connect(audioCtx.destination); audioSampleRate=audioCtx.sampleRate;audioRing=new Float32Array(Math.ceil(audioSampleRate));worklet.port.onmessage=handleWorkletMessage;sendAudioState();
+}
+function sendAudioState(){if(worklet)worklet.port.postMessage({type:'state',state:payload()})}
+async function toggleGate(){await ensureAudio();state.gate=!state.gate;if(state.gate)historyFrozen=false;sendAudioState();updateUI()}
+
+function setMode(mode){state.mode=mode;sendAudioState();updateUI()}
+function bindRange(id,key,parse=v=>Number(v)){const el=$(id);el.addEventListener('input',()=>{state[key]=parse(el.value);sendAudioState();updateUI()})}
+bindRange('fc','fc');bindRange('fm','fm');bindRange('gridOrder','gridOrder',v=>Math.round(Number(v)));bindRange('gridOffset','gridOffset');bindRange('carrierLevel','carrierLevel');bindRange('sidebandLevel','sidebandLevel');bindRange('master','master');bindRange('carrierPhase','carrierPhaseDeg');bindRange('sidebandPhase','sidebandPhaseDeg');
+$('normalization').addEventListener('change',e=>{state.normalization=e.target.value;sendAudioState();updateUI()});
+$('gridEnabled').addEventListener('change',e=>{state.gridEnabled=e.target.value==='on';sendAudioState();updateUI()});
+$('gridDisplay').addEventListener('change',e=>{state.gridDisplay=e.target.value;updateUI()});
+$('gateBtn').addEventListener('click',toggleGate); document.querySelectorAll('.modeBtn').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode))); $('wavBtn').addEventListener('click',renderWav);
+
+
+function pushRing(ring,values,write,count){for(let i=0;i<values.length;i++){ring[write]=values[i];write=(write+1)%ring.length;if(count<ring.length)count++}return[write,count]}
+function handleWorkletMessage(e){const d=e.data;if(d.type==='samples'){[audioWrite,audioCount]=pushRing(audioRing,d.raw,audioWrite,audioCount)}else if(d.type==='envelope'&&!historyFrozen){[envWrite,envCount]=pushRing(envRing,d.values,envWrite,envCount)}else if(d.type==='gateSettledOff'){historyFrozen=true;updateUI()}}
+function ringLatest(ring,write,count,n){const take=Math.min(count,n),out=new Float32Array(take),start=(write-take+ring.length)%ring.length;for(let i=0;i<take;i++)out[i]=ring[(start+i)%ring.length];return out}
+function fftRadix2(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}for(let len=2;len<=n;len<<=1){const ang=-TAU/len,wlr=Math.cos(ang),wli=Math.sin(ang);for(let i=0;i<n;i+=len){let wr=1,wi=0;for(let j=0;j<len/2;j++){const uR=re[i+j],uI=im[i+j],vR=re[i+j+len/2]*wr-im[i+j+len/2]*wi,vI=re[i+j+len/2]*wi+im[i+j+len/2]*wr;re[i+j]=uR+vR;im[i+j]=uI+vI;re[i+j+len/2]=uR-vR;im[i+j+len/2]=uI-vI;const nw=wr*wlr-wi*wli;wi=wr*wli+wi*wlr;wr=nw}}}}
+function exactWindowDft(src,f,sr){let re=0,im=0,windowSum=0;for(let i=0;i<src.length;i++){const win=.5-.5*Math.cos(TAU*i/(src.length-1)),q=TAU*f*i/sr,x=src[i]*win;re+=x*Math.cos(q);im-=x*Math.sin(q);windowSum+=win}return{re,im,phase:Math.atan2(im,re),mag:2*Math.hypot(re,im)/Math.max(1,windowSum)}}
+function gridOrdersForDisplay(gd){if(!state.gridEnabled)return[];if(state.gridDisplay==='local'){const a=[];for(let k=Math.max(1,gd.N-2);k<=gd.N+2;k++)a.push(k);return a}const a=[];for(let k=1;k*gd.g<=160;k++)if(k*gd.g>=10)a.push(k);return a}
+function drawGridLines(ctx,w,h,dpr,gd,strongOnly=false){if(!state.gridEnabled)return;for(const k of gridOrdersForDisplay(gd)){const f=k*gd.g;if(f<10||f>160)continue;const x=spectrumX(f,w),strong=Math.abs(k-gd.N)<=1;ctx.strokeStyle=strong?'rgba(255,204,122,.32)':'rgba(143,183,255,.13)';ctx.lineWidth=(strong?1.2:.7)*dpr;ctx.setLineDash(strong?[3*dpr,3*dpr]:[2*dpr,5*dpr]);ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}ctx.setLineDash([])}
+function drawLiveFft(){const c=$('fft'),{ctx,w,h,dpr}=baseCanvas(c),gd=gridData();drawGridLines(ctx,w,h,dpr,gd);const needed=Math.round(audioSampleRate*FFT_SECONDS),src=ringLatest(audioRing,audioWrite,audioCount,needed);if(src.length<Math.min(2048,needed)){ctx.fillStyle='#aab8cc';ctx.font=`${12*dpr}px system-ui`;ctx.fillText('Start audio to fill the 500 ms FFT window',12*dpr,24*dpr);$('fftInfo').textContent='waiting';return}let size=1;while(size<src.length)size<<=1;const re=new Float64Array(size),im=new Float64Array(size);let windowSum=0;for(let i=0;i<src.length;i++){const win=.5-.5*Math.cos(TAU*i/(src.length-1));re[i]=src[i]*win;windowSum+=win}fftRadix2(re,im);const minF=10,maxF=160,minDb=-100,maxDb=0,logMin=Math.log(minF),logSpan=Math.log(maxF)-logMin;const carrierRef=exactWindowDft(src,state.fc,audioSampleRate).phase;
+ctx.strokeStyle='rgba(155,184,230,.28)';ctx.lineWidth=Math.max(.7,dpr*.65);ctx.beginPath();let phaseStarted=false;const stripTop=h*.70,stripBottom=h*.90;for(let k=1;k<size/2;k++){const f=k*audioSampleRate/size;if(f<minF||f>maxF)continue;const phase=Math.atan2(im[k],re[k])-carrierRef,wrapped=Math.atan2(Math.sin(phase),Math.cos(phase)),x=(Math.log(f)-logMin)/logSpan*w,y=stripTop+(Math.PI-wrapped)/(TAU)*(stripBottom-stripTop);if(!phaseStarted){ctx.moveTo(x,y);phaseStarted=true}else ctx.lineTo(x,y)}ctx.stroke();ctx.strokeStyle='rgba(170,190,220,.18)';ctx.beginPath();ctx.moveTo(0,(stripTop+stripBottom)/2);ctx.lineTo(w,(stripTop+stripBottom)/2);ctx.stroke();ctx.fillStyle='rgba(190,205,230,.48)';ctx.font=`${9*dpr}px system-ui`;ctx.textAlign='right';ctx.fillText('phase +180°',w-4*dpr,stripTop+10*dpr);ctx.fillText('0°',w-4*dpr,(stripTop+stripBottom)/2-3*dpr);ctx.fillText('−180°',w-4*dpr,stripBottom-3*dpr);
+ctx.strokeStyle='#9fc5ff';ctx.lineWidth=Math.max(1,dpr);ctx.beginPath();let started=false;for(let k=1;k<size/2;k++){const f=k*audioSampleRate/size;if(f<minF||f>maxF)continue;const mag=2*Math.hypot(re[k],im[k])/Math.max(1,windowSum),db=Math.max(minDb,20*Math.log10(Math.max(1e-10,mag))),x=(Math.log(f)-logMin)/logSpan*w,y=h-(db-minDb)/(maxDb-minDb)*h;if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)}ctx.stroke();ctx.fillStyle='#aab8cc';ctx.font=`${10*dpr}px system-ui`;ctx.textAlign='center';for(const f of [10,20,40,80,160]){const x=(Math.log(f)-logMin)/logSpan*w;ctx.fillText(f+' Hz',x,h-5*dpr)}ctx.textAlign='left';for(const db of [0,-20,-40,-60,-80,-100]){const y=h-(db-minDb)/(maxDb-minDb)*h;ctx.fillText(db+' dB',4*dpr,Math.max(10*dpr,y-3*dpr))}const n=normalizationData();ctx.setLineDash([4*dpr,4*dpr]);for(const comp of n.comps){if(comp.f<minF||comp.f>maxF)continue;const x=(Math.log(comp.f)-logMin)/logSpan*w;ctx.strokeStyle='#ffcc7a';ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}ctx.setLineDash([]);$('fftInfo').textContent=`${FFT_SECONDS.toFixed(1)} s · carrier-ref phase · −100…0 dB${state.gridEnabled?' · grid '+gd.g.toFixed(2)+' Hz':''}`}
+
+function phasesForReadout(){const c=componentModel();const get=n=>c.find(x=>x.name===n);const carrier=get('Carrier');const lower=get('Lower');const upper=get('Upper');return{pc:carrier?deg(carrier.p):state.carrierPhaseDeg,pl:lower?deg(lower.p):null,pu:upper?deg(upper.p):null}}
+function updateUI(){
+ const n=normalizationData(),ph=phasesForReadout();
+ const gd=gridData(); $('fcVal').textContent=state.fc.toFixed(1)+' Hz';$('fmVal').textContent=gd.fm.toFixed(2)+' Hz';$('fm').value=gd.fm;$('gridEnabled').value=state.gridEnabled?'on':'off';$('gridEnabledVal').textContent=state.gridEnabled?'ON':'OFF';$('gridOrderVal').textContent='N = '+gd.N;$('gridOffsetVal').textContent=(gd.delta>=0?'+':'')+gd.delta.toFixed(2)+' Hz';$('gridDisplay').value=state.gridDisplay;$('gridDisplayVal').textContent=state.gridDisplay;$('carrierLevelVal').textContent=state.carrierLevel.toFixed(3);$('sidebandLevelVal').textContent=state.sidebandLevel.toFixed(3);$('masterVal').textContent=state.master.toFixed(2);$('carrierPhaseVal').textContent=state.carrierPhaseDeg.toFixed(0)+'°';$('sidebandPhaseVal').textContent=state.sidebandPhaseDeg.toFixed(0)+'°';$('normalizationVal').textContent=state.normalization;
+ document.querySelectorAll('.modeBtn').forEach(b=>b.classList.toggle('active',b.dataset.mode===state.mode)); $('gateBtn').classList.toggle('active',state.gate);$('gateBtn').textContent=state.gate?'Gate: ON':'Play / Gate';$('status').textContent=audioCtx?(state.gate?'PLAYING':'AUDIO READY'):'AUDIO IDLE';
+ $('sidebandPhase').disabled=state.mode!=='phase'; $('sidebandPhase').closest('.control').style.opacity=state.mode==='phase'?1:.38; $('fm').disabled=state.gridEnabled; $('fm').closest('.control').style.opacity=state.gridEnabled?.42:1; document.querySelectorAll('.gridControl').forEach(el=>el.style.opacity=state.gridEnabled?1:.38); $('gridOrder').disabled=!state.gridEnabled; $('gridOffset').disabled=!state.gridEnabled; $('gridDisplay').disabled=!state.gridEnabled;
+ const lower=state.fc-gd.fm,upper=state.fc+gd.fm;const phaseLC=ph.pl==null?'—':wrapDeg(ph.pl-ph.pc).toFixed(0)+'°';const phaseUC=ph.pu==null?'—':wrapDeg(ph.pu-ph.pc).toFixed(0)+'°';const sbRel=(ph.pl==null||ph.pu==null)?'—':wrapDeg(ph.pu-ph.pl).toFixed(0)+'°';
+ $('readout').innerHTML=`<div class="readoutGrid"><div><div class="groupTitle">Components</div><strong>Lower:</strong> ${lower.toFixed(2)} Hz<br><strong>Carrier:</strong> ${state.fc.toFixed(2)} Hz<br><strong>Upper:</strong> ${upper.toFixed(2)} Hz<br><strong>Active:</strong> ${n.comps.map(c=>c.name).join(' + ')}${state.gridEnabled?`<br><strong>Grid:</strong> ${gd.g.toFixed(3)} Hz · orders ${gd.N-1}/${gd.N}/${gd.N+1}<br><strong>Offset δ:</strong> ${(gd.delta>=0?'+':'')+gd.delta.toFixed(3)} Hz<br><strong>Drift period:</strong> ${Number.isFinite(gd.period)?gd.period.toFixed(2)+' s':'locked'}`:''}</div><div><div class="groupTitle">Phases</div><strong>Carrier φc:</strong> ${wrapDeg(ph.pc).toFixed(0)}°<br><strong>Lower φl:</strong> ${ph.pl==null?'—':wrapDeg(ph.pl).toFixed(0)+'°'}<br><strong>Upper φu:</strong> ${ph.pu==null?'—':wrapDeg(ph.pu).toFixed(0)+'°'}<br><strong>Lower − carrier:</strong> ${phaseLC}<br><strong>Upper − carrier:</strong> ${phaseUC}<br><strong>Upper − lower:</strong> ${sbRel}</div><div><div class="groupTitle">Normalization</div><strong>Raw RMS:</strong> ${n.raw.rms.toFixed(4)}<br><strong>Normalized RMS:</strong> ${n.normalizedRms.toFixed(4)}<br><strong>Normalized peak:</strong> ${n.normalizedPeak.toFixed(4)}<br><strong>Normalization gain:</strong> ${n.gain.toFixed(4)} ×<br>${n.limited?'<span class="warn">Safety-limited below clipping</span>':'<span class="ok">Peak-safe</span>'}</div></div>`;
+}
+function resizeCanvas(c){const dpr=Math.min(2,devicePixelRatio||1),r=c.getBoundingClientRect(),w=Math.max(10,Math.round(r.width*dpr)),h=Math.max(10,Math.round(r.height*dpr));if(c.width!==w||c.height!==h){c.width=w;c.height=h}return{ctx:c.getContext('2d'),w,h,dpr}}
+function baseCanvas(c){const o=resizeCanvas(c),x=o.ctx;x.clearRect(0,0,o.w,o.h);x.strokeStyle='#1d2a3e';x.lineWidth=1;for(let i=1;i<4;i++){x.beginPath();x.moveTo(0,o.h*i/4);x.lineTo(o.w,o.h*i/4);x.stroke()}x.beginPath();x.moveTo(0,o.h/2);x.lineTo(o.w,o.h/2);x.stroke();return o}
+function drawLine(canvas,values,min,max){const{ctx,w,h}=baseCanvas(canvas);ctx.strokeStyle='#9fc5ff';ctx.lineWidth=Math.max(1,devicePixelRatio||1);ctx.beginPath();values.forEach((v,i)=>{const x=i/(values.length-1)*w,y=h-(v-min)/(max-min)*h;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
+function analyticState(comps,t){let re=0,im=0,dre=0,dim=0;for(const c of comps){const q=TAU*c.f*t+c.p,co=Math.cos(q),si=Math.sin(q),w=TAU*c.f;re+=c.a*co;im+=c.a*si;dre-=c.a*w*si;dim+=c.a*w*co}const amp=Math.hypot(re,im),den=re*re+im*im;const fi=den>1e-12?(re*dim-im*dre)/(TAU*den):NaN;return{amp,fi}}
+function drawPhasePlane(comps,g){const c=$('phasePlane'),{ctx,w,h,dpr}=resizeCanvas(c);ctx.clearRect(0,0,w,h);const padL=42*dpr,padR=12*dpr,padT=12*dpr,padB=28*dpr,plotW=w-padL-padR,plotH=h-padT-padB;const duration=1,N=1200,pts=[];let maxAmp=.01,maxDev=1;for(let i=0;i<N;i++){const t=i/(N-1)*duration,a=analyticState(comps,t),amp=a.amp*g,dev=a.fi-state.fc;if(Number.isFinite(dev)){pts.push({amp,dev});maxAmp=Math.max(maxAmp,amp);maxDev=Math.max(maxDev,Math.abs(dev))}}maxAmp*=1.08;maxDev=Math.max(effectiveFm()*1.15,maxDev*1.08,1);ctx.strokeStyle='#1d2a3e';ctx.lineWidth=1;for(let i=0;i<=4;i++){const x=padL+plotW*i/4;ctx.beginPath();ctx.moveTo(x,padT);ctx.lineTo(x,padT+plotH);ctx.stroke()}for(let i=0;i<=4;i++){const y=padT+plotH*i/4;ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+plotW,y);ctx.stroke()}const y0=padT+plotH/2;ctx.strokeStyle='#40506b';ctx.beginPath();ctx.moveTo(padL,y0);ctx.lineTo(padL+plotW,y0);ctx.stroke();ctx.strokeStyle='rgba(159,197,255,.82)';ctx.lineWidth=Math.max(1.2*dpr,1);ctx.beginPath();let started=false;for(const p of pts){const x=padL+(p.amp/maxAmp)*plotW,y=padT+(maxDev-p.dev)/(2*maxDev)*plotH;if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)}ctx.stroke();if(pts.length){const p=pts[pts.length-1],x=padL+(p.amp/maxAmp)*plotW,y=padT+(maxDev-p.dev)/(2*maxDev)*plotH;ctx.fillStyle='#ffcc7a';ctx.beginPath();ctx.arc(x,y,3.5*dpr,0,TAU);ctx.fill()}ctx.fillStyle='#aab8cc';ctx.font=`${10*dpr}px system-ui`;ctx.textAlign='center';ctx.fillText('Instantaneous amplitude |z(t)|',padL+plotW/2,h-7*dpr);ctx.save();ctx.translate(11*dpr,padT+plotH/2);ctx.rotate(-Math.PI/2);ctx.fillText('Instantaneous frequency deviation fi − fc',0,0);ctx.restore();ctx.textAlign='right';ctx.fillText('+'+maxDev.toFixed(1)+' Hz',padL-5*dpr,padT+9*dpr);ctx.fillText('0 Hz',padL-5*dpr,y0+3*dpr);ctx.fillText('−'+maxDev.toFixed(1)+' Hz',padL-5*dpr,padT+plotH);ctx.textAlign='left';ctx.fillText('0',padL,h-8*dpr);ctx.textAlign='right';ctx.fillText(maxAmp.toFixed(3),padL+plotW,h-8*dpr);$('phasePlaneInfo').textContent='1 s · x amplitude · y fi − fc'}
+const spectrumHandles=[];let spectrumDrag=null;
+function spectrumX(f,w){const minF=10,maxF=160;return(Math.log(Math.max(minF,f))-Math.log(minF))/(Math.log(maxF)-Math.log(minF))*w}
+function spectrumFreq(x,w){const minF=10,maxF=160;return Math.exp(Math.log(minF)+Math.max(0,Math.min(1,x/w))*(Math.log(maxF)-Math.log(minF)))}
+function drawSpectrum(){const c=$('spectrum'),{ctx,w,h,dpr}=baseCanvas(c),n=normalizationData(),gd=gridData(),baseY=h-25*dpr,topY=18*dpr;spectrumHandles.length=0;drawGridLines(ctx,w,h,dpr,gd);ctx.font=`${10*dpr}px system-ui`;ctx.textAlign='center';for(const x of n.comps){const px=spectrumX(x.f,w),ampNorm=x.name==='Carrier'?state.carrierLevel/.6:state.sidebandLevel/.3,py=baseY-Math.max(0,Math.min(1,ampNorm))*(baseY-topY);ctx.strokeStyle='#9fc5ff';ctx.lineWidth=2*dpr;ctx.beginPath();ctx.moveTo(px,baseY);ctx.lineTo(px,py);ctx.stroke();ctx.fillStyle='#dbe8ff';ctx.beginPath();ctx.arc(px,py,6*dpr,0,TAU);ctx.fill();ctx.fillStyle='#d9e4f8';ctx.fillText(x.f.toFixed(1)+' Hz',px,baseY+15*dpr);ctx.fillText((x.a*n.gain).toFixed(3),px,Math.max(11*dpr,py-9*dpr));spectrumHandles.push({name:x.name,x:px,y:py,r:12*dpr})}if(state.gridEnabled){ctx.textAlign='left';ctx.fillStyle='rgba(255,204,122,.78)';ctx.fillText(`grid ${gd.g.toFixed(2)} Hz · ${gd.N-1}:${gd.N}:${gd.N+1} · δ ${(gd.delta>=0?'+':'')+gd.delta.toFixed(2)} Hz`,8*dpr,13*dpr)}$('spectrumInfo').textContent=state.gridEnabled?'drag carrier = fc · sideband = grid offset δ':'drag handles · x frequency · y level'}
+function spectrumPointer(e){const c=$('spectrum'),r=c.getBoundingClientRect(),sx=c.width/r.width,sy=c.height/r.height;return{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy}}
+function applySpectrumDrag(p){if(!spectrumDrag)return;const c=$('spectrum'),f=spectrumFreq(p.x,c.width);if(spectrumDrag.name==='Carrier'){state.fc=Math.max(20,Math.min(80,f));$('fc').value=state.fc}else if(state.gridEnabled){const g=gridFundamental(),targetFm=Math.abs(f-state.fc);state.gridOffset=Math.max(-2,Math.min(2,targetFm-g));$('gridOffset').value=state.gridOffset}else{state.fm=Math.max(1,Math.min(30,Math.abs(f-state.fc)));$('fm').value=state.fm}const baseY=c.height-25*Math.min(2,devicePixelRatio||1),topY=18*Math.min(2,devicePixelRatio||1),level=Math.max(0,Math.min(1,(baseY-p.y)/(baseY-topY)));if(spectrumDrag.name==='Carrier'){state.carrierLevel=level*.6;$('carrierLevel').value=state.carrierLevel}else{state.sidebandLevel=level*.3;$('sidebandLevel').value=state.sidebandLevel}sendAudioState();updateUI()}
+$('spectrum').addEventListener('pointerdown',e=>{const p=spectrumPointer(e);let best=null,bestD=Infinity;for(const h of spectrumHandles){const d=Math.hypot(p.x-h.x,p.y-h.y);if(d<bestD){best=h;bestD=d}}if(best&&bestD<=best.r*1.7){spectrumDrag={name:best.name};$('spectrum').setPointerCapture(e.pointerId);applySpectrumDrag(p);e.preventDefault()}});
+$('spectrum').addEventListener('pointermove',e=>{if(!spectrumDrag)return;applySpectrumDrag(spectrumPointer(e));e.preventDefault()});
+function endSpectrumDrag(e){if(!spectrumDrag)return;spectrumDrag=null;try{$('spectrum').releasePointerCapture(e.pointerId)}catch(_){}}
+$('spectrum').addEventListener('pointerup',endSpectrumDrag);$('spectrum').addEventListener('pointercancel',endSpectrumDrag);
+function drawVisuals(nowMs){if(nowMs-lastVisualMs<33){requestAnimationFrame(drawVisuals);return}lastVisualMs=nowMs;const n=normalizationData(),comps=n.comps,g=n.gain;const shortDur=.5;const N=900,wave=[],env=[];for(let i=0;i<N;i++){const t=i/(N-1)*shortDur;wave.push(sampleSignal(comps,t)*g);env.push(sampleEnvelope(comps,t)*g)}const lim=Math.max(.05,n.normalizedPeak*1.08);drawLine($('wave'),wave,-lim,lim);drawLine($('envelope'),env,0,Math.max(.05,...env)*1.08);$('waveInfo').textContent=(shortDur*1000).toFixed(0)+' ms';$('envInfo').textContent='analytic component envelope';drawSpectrum();drawPhasePlane(comps,g);const hist=ringLatest(envRing,envWrite,envCount,ENV_RATE);drawLine($('history'),hist.length?hist:[0,0],0,Math.max(.05,...hist)*1.08);$('historyInfo').textContent=(historyFrozen?'FROZEN':'LIVE')+` · ${(hist.length/ENV_RATE).toFixed(2)} s`;if(nowMs-lastFftMs>=100){lastFftMs=nowMs;drawLiveFft()}requestAnimationFrame(drawVisuals)}
+
+function encodeWav(samples,sr){const b=new ArrayBuffer(44+samples.length*2),v=new DataView(b);const s=(o,t)=>[...t].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));s(0,'RIFF');v.setUint32(4,36+samples.length*2,true);s(8,'WAVE');s(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);s(36,'data');v.setUint32(40,samples.length*2,true);for(let i=0;i<samples.length;i++){const x=Math.max(-1,Math.min(1,samples[i]));v.setInt16(44+i*2,x<0?x*32768:x*32767,true)}return new Blob([b],{type:'audio/wav'})}
+function renderWav(){const sr=48000,dur=5,n=normalizationData(),samples=new Float32Array(sr*dur),fade=Math.round(sr*.02);for(let i=0;i<samples.length;i++){let a=1;if(i<fade)a=.5-.5*Math.cos(Math.PI*i/fade);if(i>samples.length-fade)a*=.5-.5*Math.cos(Math.PI*(samples.length-i)/fade);samples[i]=sampleSignal(n.comps,i/sr)*n.gain*state.master*a}const blob=encodeWav(samples,sr),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`am-sideband-phase-${state.mode}-${state.fc.toFixed(1)}Hz-${effectiveFm().toFixed(1)}Hz.wav`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+
+window.addEventListener('resize',()=>{}); updateUI(); requestAnimationFrame(drawVisuals);
+</script>
+</body>
+</html>
