@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AM / Sideband Phase Lab v1.0 · Stereo Phase</title>
+<style>
+:root{color-scheme:dark;--bg:#090b10;--panel:#111722;--inner:#0b1018;--line:#263247;--text:#f2f5fb;--muted:#aab8cc;--accent:#8fb7ff;--warn:#ffcc7a}
+*{box-sizing:border-box}body{margin:0;padding:12px;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}h1{margin:0 0 3px;font-size:19px}p{margin:3px 0}.subtitle{color:var(--muted);font-size:12px}.panel{margin-top:9px;padding:9px;background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:0 10px 34px rgba(0,0,0,.22)}.modeRow,.actionRow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}button,select{padding:8px 10px;color:var(--text);background:#172033;border:1px solid #33415c;border-bottom-width:3px;border-radius:9px;font:inherit;font-size:13px}button:active{transform:translateY(1px);border-bottom-width:2px}.modeBtn.active{background:#20314d;border-color:var(--accent);box-shadow:0 0 0 1px rgba(143,183,255,.3)}#gateBtn.active{background:#173526;border-color:#4b9669}.status{padding:5px 8px;border:1px solid #33415c;border-radius:999px;color:var(--muted);font-size:11px}.labGrid{display:grid;grid-template-columns:minmax(520px,1.05fr) minmax(420px,.95fr);gap:9px;align-items:start}.controlPanel,.visualPanel{min-width:0}.grid{display:grid;grid-template-columns:repeat(2,minmax(250px,1fr));gap:8px}.group{display:grid;gap:6px;padding:8px;background:var(--inner);border:1px solid var(--line);border-radius:9px}.groupTitle{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#b9d5ff}.control{display:grid;grid-template-columns:minmax(120px,145px) minmax(100px,1fr) 66px;gap:7px;align-items:center}.control label{font-size:12px;line-height:1.15}.control input[type=range]{width:100%;accent-color:var(--accent)}.control select{min-width:0;width:100%}.val{text-align:right;font-variant-numeric:tabular-nums;font-size:11px;color:#d9e4f8}.readout{margin-top:8px;padding:8px;background:var(--inner);border:1px solid var(--line);border-radius:9px;font-size:11px;line-height:1.38;font-variant-numeric:tabular-nums}.readoutGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.readout strong{color:white}.ok{color:#9fd3ff}.warn{color:var(--warn)}.scopeGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:7px}.scopeCard{padding:7px;background:var(--inner);border:1px solid var(--line);border-radius:9px;min-width:0}.fftCard{padding:8px}.scopeTitle{display:flex;justify-content:space-between;gap:6px;margin-bottom:5px;color:#d9e4f8;font-size:11px;white-space:nowrap}.scope{display:block;width:100%;height:118px;background:#070b11;border-radius:7px}.fftScope{height:330px}.spectrumScope{height:158px;touch-action:none;cursor:crosshair}.phasePlaneScope{height:210px}.stereoPhaseScope{height:210px}.phasePointers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.phasePointer{display:grid;place-items:center;min-height:120px;background:#070b11;border-radius:7px}.phasePointer canvas{width:100%;height:112px;display:block}.hint{margin-top:6px;color:var(--muted);font-size:11px;line-height:1.35}.concept{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.concept>div{padding:7px;background:var(--inner);border:1px solid var(--line);border-radius:8px;font-size:11px;line-height:1.35}.concept code{color:#c9dcff}.footer{margin-top:7px;color:var(--muted);font-size:10px}@media(max-width:1080px){.labGrid{grid-template-columns:1fr}.fftScope{height:250px}}@media(max-width:760px){.grid,.readoutGrid,.concept,.phasePointers{grid-template-columns:1fr}.scopeGrid{grid-template-columns:1fr 1fr}.control{grid-template-columns:minmax(110px,135px) minmax(90px,1fr) 62px}}@media(max-width:520px){body{padding:8px}.modeRow button{flex:1 1 45%}.scopeGrid{grid-template-columns:1fr}.scope{height:105px}.fftScope{height:220px}.control{grid-template-columns:1fr 62px}.control label{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<h1>AM / Sideband Phase Lab v1.0 · Stereo Phase</h1>
+<p class="subtitle">Same frequencies and per-channel amplitudes · controlled inter-channel component phases</p>
+
+<section class="panel">
+  <div class="modeRow" aria-label="Signal mode">
+    <button class="modeBtn active" data-mode="carrier">1. Carrier only</button>
+    <button class="modeBtn" data-mode="lower">2. Carrier + Lower</button>
+    <button class="modeBtn" data-mode="am">3. Pure AM</button>
+    <button class="modeBtn" data-mode="phase">4. Same Spectrum / Phase Shift</button>
+  </div>
+  <div class="actionRow" style="margin-top:10px">
+    <button id="gateBtn">Play / Gate</button>
+    <button id="wavBtn">Render 5 s WAV</button>
+    <span id="status" class="status">AUDIO IDLE</span>
+  </div>
+</section>
+
+<div class="labGrid">
+<section class="panel controlPanel">
+ <div class="grid">
+  <div class="group">
+   <div class="groupTitle">Frequencies &amp; phase</div>
+   <div class="control"><label for="fc">Carrier Frequency fc</label><input id="fc" type="range" min="20" max="80" step="0.1" value="50"><span class="val" id="fcVal"></span></div>
+   <div class="control"><label for="fm">Difference / Modulation fm</label><input id="fm" type="range" min="1" max="30" step="0.1" value="10"><span class="val" id="fmVal"></span></div>
+   <div class="control"><label for="relationMode">Frequency relation</label><select id="relationMode"><option value="free">free</option><option value="beat">beat lock</option><option value="grid">grid lock</option></select><span class="val" id="relationModeVal"></span></div>
+   <div class="control gridControl"><label for="gridOrder">Grid order N</label><input id="gridOrder" type="range" min="2" max="20" step="1" value="5"><span class="val" id="gridOrderVal"></span></div>
+   <div class="control gridControl"><label for="gridOffset">Grid offset / mismatch δ</label><input id="gridOffset" type="range" min="-2" max="2" step="0.01" value="1"><span class="val" id="gridOffsetVal"></span></div>
+   <div class="control gridControl"><label for="gridDisplay">Grid display</label><select id="gridDisplay"><option value="local">local</option><option value="full">full</option></select><span class="val" id="gridDisplayVal"></span></div>
+   <div class="control"><label for="carrierPhase">Carrier phase φc</label><input id="carrierPhase" type="range" min="-180" max="180" step="1" value="0"><span class="val" id="carrierPhaseVal"></span></div>
+   <div class="control"><label for="sidebandPhase">Sideband Phase</label><input id="sidebandPhase" type="range" min="-180" max="180" step="1" value="90"><span class="val" id="sidebandPhaseVal"></span></div>
+  </div>
+  <div class="group">
+   <div class="groupTitle">Levels &amp; comparison</div>
+   <div class="control"><label for="carrierLevel">Carrier Level</label><input id="carrierLevel" type="range" min="0" max="0.6" step="0.005" value="0.25"><span class="val" id="carrierLevelVal"></span></div>
+   <div class="control"><label for="sidebandLevel">Sideband Level (each)</label><input id="sidebandLevel" type="range" min="0" max="0.3" step="0.005" value="0.08"><span class="val" id="sidebandLevelVal"></span></div>
+   <div class="control"><label for="master">Master Volume</label><input id="master" type="range" min="0" max="0.8" step="0.01" value="0.30"><span class="val" id="masterVal"></span></div>
+   <div class="control"><label for="normalization">Normalization</label><select id="normalization"><option value="rms">equal RMS</option><option value="peak">equal peak</option><option value="none">none</option></select><span class="val" id="normalizationVal"></span></div>
+  </div>
+  <div class="group">
+   <div class="groupTitle">Stereo phase structure</div>
+   <div class="control"><label for="stereoMode">Stereo mode</label><select id="stereoMode"><option value="dual">Dual Mono</option><option value="whole">Whole Signal Phase</option><option value="carrier">Carrier Stereo Phase</option><option value="sideband">Sideband Stereo Phase</option><option value="component">Component Stereo Phase</option></select><span class="val" id="stereoModeVal"></span></div>
+   <div class="control stereoWhole"><label for="stereoPhase">Stereo Phase θ</label><input id="stereoPhase" type="range" min="-180" max="180" step="1" value="0"><span class="val" id="stereoPhaseVal"></span></div>
+   <div class="control stereoSideband"><label for="sidebandStereoMode">Sideband structure</label><select id="sidebandStereoMode"><option value="linked">linked</option><option value="mirrored">mirrored</option></select><span class="val" id="sidebandStereoModeVal"></span></div>
+   <div class="control stereoCarrier"><label for="carrierStereoPhase">Carrier R Phase</label><input id="carrierStereoPhase" type="range" min="-180" max="180" step="1" value="90"><span class="val" id="carrierStereoPhaseVal"></span></div>
+   <div class="control stereoLower"><label for="lowerStereoPhase">Lower R Phase</label><input id="lowerStereoPhase" type="range" min="-180" max="180" step="1" value="90"><span class="val" id="lowerStereoPhaseVal"></span></div>
+   <div class="control stereoUpper"><label for="upperStereoPhase">Upper R Phase</label><input id="upperStereoPhase" type="range" min="-180" max="180" step="1" value="90"><span class="val" id="upperStereoPhaseVal"></span></div>
+   <div class="control"><label for="stereoNormalization">Stereo normalization</label><select id="stereoNormalization"><option value="channel">per-channel</option><option value="sum">stereo-sum</option></select><span class="val" id="stereoNormalizationVal"></span></div>
+  </div>
+ </div>
+ <div id="readout" class="readout"></div>
+ <div class="scopeGrid">
+  <div class="scopeCard"><div class="scopeTitle"><span>L / R waveform</span><span id="waveInfo"></span></div><canvas id="wave" class="scope"></canvas></div>
+  <div class="scopeCard"><div class="scopeTitle"><span>Envelope</span><span id="envInfo"></span></div><canvas id="envelope" class="scope"></canvas></div>
+  <div class="scopeCard"><div class="scopeTitle"><span>1 s pulse history</span><span id="historyInfo"></span></div><canvas id="history" class="scope"></canvas></div>
+ </div>
+</section>
+
+<section class="panel visualPanel">
+ <div class="scopeCard fftCard"><div class="scopeTitle"><span>Live FFT L/R overlay · 500 ms · log frequency</span><span id="fftInfo"></span></div><canvas id="fft" class="scope fftScope"></canvas></div>
+ <div class="scopeCard" style="margin-top:7px"><div class="scopeTitle"><span>L / R component spectrum · amplitude + phase</span><span id="spectrumInfo"></span></div><canvas id="spectrum" class="scope spectrumScope"></canvas></div>
+ <div class="scopeCard" style="margin-top:7px"><div class="scopeTitle"><span>Instantaneous phase plane</span><span id="phasePlaneInfo"></span></div><canvas id="phasePlane" class="scope phasePlaneScope"></canvas></div>
+ <div class="scopeCard" style="margin-top:7px"><div class="scopeTitle"><span>Stereo phase plane · x Left · y Right</span><span id="stereoPhasePlaneInfo"></span></div><canvas id="stereoPhasePlane" class="scope stereoPhaseScope"></canvas></div>
+ <div class="scopeCard" style="margin-top:7px"><div class="scopeTitle"><span>Component inter-channel phase</span><span id="phasePointersInfo"></span></div><div class="phasePointers"><div class="phasePointer"><canvas id="lowerPointer"></canvas></div><div class="phasePointer"><canvas id="carrierPointer"></canvas></div><div class="phasePointer"><canvas id="upperPointer"></canvas></div></div></div>
+ <div class="hint">FFT: latest 500 ms output, Hann window, 10–160 Hz log axis and −100…0 dB range. Dim phase trace is carrier-referenced. Beat Lock keeps fm fixed while the grid measures mismatch; Grid Lock derives fm from g + δ. Harmonic grid lines show k·g; highlighted lines are N−1, N and N+1. Drag spectrum handles horizontally for frequency or relation adjustment and vertically for level.</div>
+</section>
+</div>
+
+<section class="panel concept">
+ <div><strong>Carrier + Lower</strong><br><code>fc + (fc − fm)</code><br>Two spectral components. This is not conventional AM.</div>
+ <div><strong>Pure AM</strong><br><code>A[1+m cos(2πfmt)]cos(2πfct)</code><br>Carrier plus two equal, symmetric, in-phase sidebands.</div>
+ <div><strong>Same Spectrum / Phase Shift</strong><br>Same three frequencies and raw amplitudes as Pure AM. Both sidebands rotate together relative to the carrier; this is not claimed to be exact FM.</div>
+</section>
+<div class="footer">Stereo output uses identical L/R frequencies and component amplitudes; only explicit component phases may differ. Start at low actuator and amplifier gain.</div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id); const TAU=Math.PI*2;
+const state={mode:'carrier',fc:50,fm:10,relationMode:'free',gridOrder:5,gridOffset:1,gridDisplay:'local',carrierLevel:.25,sidebandLevel:.08,master:.30,normalization:'rms',carrierPhaseDeg:0,sidebandPhaseDeg:90,stereoMode:'dual',stereoPhaseDeg:0,sidebandStereoMode:'linked',carrierStereoPhaseDeg:90,lowerStereoPhaseDeg:90,upperStereoPhaseDeg:90,stereoNormalization:'channel',gate:false};
+let audioCtx=null,worklet=null,masterGain=null; let lastVisualMs=0,lastFftMs=0;
+const ENV_RATE=1000, HISTORY_SECONDS=1, FFT_SECONDS=.5;
+let envRing=new Float32Array(ENV_RATE*HISTORY_SECONDS),envWrite=0,envCount=0,historyFrozen=true;
+let audioRing=new Float32Array(48000),audioWrite=0,audioCount=0,audioSampleRate=48000;let leftRing=new Float32Array(48000),rightRing=new Float32Array(48000),leftWrite=0,rightWrite=0,leftCount=0,rightCount=0;
+
+function rad(d){return d*Math.PI/180} function deg(r){return r*180/Math.PI}
+function wrapDeg(v){let x=((v+180)%360+360)%360-180; return Math.abs(x)<.0001?0:x}
+function gridFundamental(s=state){return s.fc/Math.max(2,Math.round(s.gridOrder))}
+function gridVisible(s=state){return s.relationMode!=='free'}
+function effectiveFm(s=state){const raw=s.relationMode==='grid'?gridFundamental(s)+s.gridOffset:s.fm;return Math.max(1,Math.min(30,Math.min(s.fc-.1,raw)))}
+function gridData(s=state){const N=Math.max(2,Math.round(s.gridOrder)),g=s.fc/N,fm=effectiveFm(s),delta=fm-g;return{N,g,fm,delta,period:Math.abs(delta)<1e-9?Infinity:1/Math.abs(delta),lowerGrid:(N-1)*g,carrierGrid:N*g,upperGrid:(N+1)*g}}
+function componentModel(s=state,mode=s.mode){
+ const fc=Math.max(20,s.fc),fm=effectiveFm(s); const lower=Math.max(.01,fc-fm),upper=fc+fm;
+ const pc=rad(s.carrierPhaseDeg); let pl=pc,pu=pc;
+ if(mode==='phase'){pl=pc+rad(s.sidebandPhaseDeg);pu=pc+rad(s.sidebandPhaseDeg)}
+ const c=[];
+ if(mode==='carrier'||mode==='lower'||mode==='am'||mode==='phase')c.push({name:'Carrier',f:fc,a:s.carrierLevel,p:pc});
+ if(mode==='lower'||mode==='am'||mode==='phase')c.push({name:'Lower',f:lower,a:s.sidebandLevel,p:pl});
+ if(mode==='am'||mode==='phase')c.push({name:'Upper',f:upper,a:s.sidebandLevel,p:pu});
+ return c;
+}
+function stereoOffsets(s=state){
+ let lower=0,carrier=0,upper=0;
+ if(s.stereoMode==='whole')lower=carrier=upper=rad(s.stereoPhaseDeg);
+ else if(s.stereoMode==='carrier')carrier=rad(s.carrierStereoPhaseDeg);
+ else if(s.stereoMode==='sideband'){const q=rad(s.stereoPhaseDeg);lower=s.sidebandStereoMode==='mirrored'?-q:q;upper=q}
+ else if(s.stereoMode==='component'){lower=rad(s.lowerStereoPhaseDeg);carrier=rad(s.carrierStereoPhaseDeg);upper=rad(s.upperStereoPhaseDeg)}
+ return{Lower:lower,Carrier:carrier,Upper:upper};
+}
+function stereoComponents(s=state,mode=s.mode){const left=componentModel(s,mode),off=stereoOffsets(s),right=left.map(c=>({...c,p:c.p+(off[c.name]||0)}));return{left,right,offsets:off}}
+function sampleStereo(st,t){return{l:sampleSignal(st.left,t),r:sampleSignal(st.right,t)}}
+function stereoMetrics(s=state,mode=s.mode){
+ const st=stereoComponents(s,mode),sr=12000,dur=2,n=sr*dur;let lss=0,rss=0,mss=0,sss=0,lr=0,lp=0,rp=0,sumPeak=0;
+ for(let i=0;i<n;i++){const q=sampleStereo(st,i/sr),m=(q.l+q.r)/2,side=(q.l-q.r)/2;lss+=q.l*q.l;rss+=q.r*q.r;mss+=m*m;sss+=side*side;lr+=q.l*q.r;lp=Math.max(lp,Math.abs(q.l));rp=Math.max(rp,Math.abs(q.r));sumPeak=Math.max(sumPeak,Math.abs(q.l+q.r))}
+ const lRms=Math.sqrt(lss/n),rRms=Math.sqrt(rss/n),midRms=Math.sqrt(mss/n),sideRms=Math.sqrt(sss/n),corr=lr/Math.sqrt(Math.max(1e-20,lss*rss));
+ return{st,lRms,rRms,midRms,sideRms,corr,leftPeak:lp,rightPeak:rp,monoSumPeak:sumPeak};
+}
+function sampleSignal(comps,t){let x=0;for(const c of comps)x+=c.a*Math.cos(TAU*c.f*t+c.p);return x}
+function sampleEnvelope(comps,t){let re=0,im=0;for(const c of comps){const q=TAU*c.f*t+c.p;re+=c.a*Math.cos(q);im+=c.a*Math.sin(q)}return Math.hypot(re,im)}
+function rawMetrics(comps){
+ const sr=12000,dur=2,n=sr*dur;let ss=0,peak=0;
+ for(let i=0;i<n;i++){const x=sampleSignal(comps,i/sr);ss+=x*x;peak=Math.max(peak,Math.abs(x))}
+ return{rms:Math.sqrt(ss/n),peak};
+}
+function normalizationData(s=state,mode=s.mode){
+ const comps=componentModel(s,mode),raw=rawMetrics(comps); const targetRms=Math.max(.000001,s.carrierLevel/Math.sqrt(2)); const targetPeak=Math.max(.000001,s.carrierLevel);
+ let gain=1;if(s.normalization==='rms'&&raw.rms>0)gain=targetRms/raw.rms;if(s.normalization==='peak'&&raw.peak>0)gain=targetPeak/raw.peak;
+ const safety=raw.peak>0?0.98/raw.peak:1; const limited=gain>safety; gain=Math.min(gain,safety);
+ const sm=stereoMetrics(s,mode);
+ let stereoGain=1;
+ if(s.stereoNormalization==='sum'){
+   const dual={...s,stereoMode:'dual',stereoNormalization:'channel'},ref=stereoMetrics(dual,mode);
+   if(sm.midRms>1e-9)stereoGain=ref.midRms/sm.midRms;
+   stereoGain=Math.min(stereoGain,4);
+ }
+ const peakSafety=Math.max(sm.leftPeak,sm.rightPeak)>0?0.98/(Math.max(sm.leftPeak,sm.rightPeak)*gain):1;
+ stereoGain=Math.min(stereoGain,peakSafety);
+ return{comps,raw,gain:gain*stereoGain,baseGain:gain,stereoGain,limited:limited||stereoGain<1,normalizedRms:raw.rms*gain*stereoGain,normalizedPeak:raw.peak*gain*stereoGain,targetRms,targetPeak,stereo:sm};
+}
+function payload(){const n=normalizationData(),st=stereoComponents();return{...state,normGain:n.gain,leftComponents:st.left.map(c=>({name:c.name,f:c.f,a:c.a,p:c.p})),rightComponents:st.right.map(c=>({name:c.name,f:c.f,a:c.a,p:c.p}))}}
+
+
+const workletSource=`class SidebandLabProcessor extends AudioWorkletProcessor{constructor(){super();this.current={leftComponents:[],rightComponents:[],normGain:1,master:0,gate:false};this.old=null;this.fade=1;this.fadeStep=1;this.t=0;this.raw=new Float32Array(1024);this.left=new Float32Array(1024);this.right=new Float32Array(1024);this.rawPos=0;this.envStep=Math.max(1,Math.round(sampleRate/1000));this.envPhase=0;this.env=new Float32Array(256);this.envPos=0;this.offReported=true;this.port.onmessage=e=>{const next=e.data;if(next.type==='state'){this.old=this.current;this.current=next.state;this.fade=0;this.fadeStep=1/Math.max(1,Math.round(sampleRate*.02));if(next.state.gate)this.offReported=false;}}}pair(st,t){if(!st||!st.gate)return[0,0,0,0];let l=0,r=0,re=0,im=0;for(const c of st.leftComponents){const q=2*Math.PI*c.f*t+c.p,ca=Math.cos(q),sa=Math.sin(q);l+=c.a*ca;re+=c.a*ca;im+=c.a*sa}for(const c of st.rightComponents){const q=2*Math.PI*c.f*t+c.p;r+=c.a*Math.cos(q)}const g=st.normGain*st.master;return[l*g,r*g,re*g,im*g]}flush(){if(this.rawPos){const m=this.raw.slice(0,this.rawPos),l=this.left.slice(0,this.rawPos),r=this.right.slice(0,this.rawPos);this.port.postMessage({type:'samples',sampleRate,raw:m,left:l,right:r},[m.buffer,l.buffer,r.buffer]);this.rawPos=0}if(this.envPos){const e=this.env.slice(0,this.envPos);this.port.postMessage({type:'envelope',values:e},[e.buffer]);this.envPos=0}}process(i,o){const out=o[0];if(!out||!out[0])return true;for(let k=0;k<out[0].length;k++){let a=1,cur=this.pair(this.current,this.t),old=[0,0,0,0];if(this.fade<1&&this.old){a=.5-.5*Math.cos(Math.PI*this.fade);old=this.pair(this.old,this.t);this.fade=Math.min(1,this.fade+this.fadeStep)}const l=old[0]*(1-a)+cur[0]*a,r=old[1]*(1-a)+cur[1]*a,re=old[2]*(1-a)+cur[2]*a,im=old[3]*(1-a)+cur[3]*a,env=Math.hypot(re,im);out[0][k]=l;if(out[1])out[1][k]=r;this.left[this.rawPos]=l;this.right[this.rawPos]=r;this.raw[this.rawPos++]=(l+r)/2;if(this.rawPos===this.raw.length)this.flush();if(++this.envPhase>=this.envStep){this.envPhase=0;this.env[this.envPos++]=env;if(this.envPos===this.env.length)this.flush()}this.t+=1/sampleRate}if(this.fade>=1&&!this.current.gate&&!this.offReported){this.flush();this.offReported=true;this.port.postMessage({type:'gateSettledOff'})}return true}}registerProcessor('sideband-lab',SidebandLabProcessor);`;
+async function ensureAudio(){
+ if(audioCtx){if(audioCtx.state==='suspended')await audioCtx.resume();return}
+ audioCtx=new AudioContext({latencyHint:'interactive'}); const blob=new Blob([workletSource],{type:'application/javascript'}); const url=URL.createObjectURL(blob);
+ try{await audioCtx.audioWorklet.addModule(url)}finally{URL.revokeObjectURL(url)}
+ worklet=new AudioWorkletNode(audioCtx,'sideband-lab',{numberOfOutputs:1,outputChannelCount:[2]}); masterGain=audioCtx.createGain(); masterGain.gain.value=1; worklet.connect(masterGain).connect(audioCtx.destination); audioSampleRate=audioCtx.sampleRate;audioRing=new Float32Array(Math.ceil(audioSampleRate));leftRing=new Float32Array(Math.ceil(audioSampleRate));rightRing=new Float32Array(Math.ceil(audioSampleRate));worklet.port.onmessage=handleWorkletMessage;sendAudioState();
+}
+function sendAudioState(){if(worklet)worklet.port.postMessage({type:'state',state:payload()})}
+async function toggleGate(){await ensureAudio();state.gate=!state.gate;if(state.gate)historyFrozen=false;sendAudioState();updateUI()}
+
+function setMode(mode){state.mode=mode;sendAudioState();updateUI()}
+function bindRange(id,key,parse=v=>Number(v)){const el=$(id);el.addEventListener('input',()=>{state[key]=parse(el.value);sendAudioState();updateUI()})}
+bindRange('fc','fc');bindRange('fm','fm');bindRange('gridOrder','gridOrder',v=>Math.round(Number(v)));bindRange('gridOffset','gridOffset');bindRange('carrierLevel','carrierLevel');bindRange('sidebandLevel','sidebandLevel');bindRange('master','master');bindRange('carrierPhase','carrierPhaseDeg');bindRange('sidebandPhase','sidebandPhaseDeg');bindRange('stereoPhase','stereoPhaseDeg');bindRange('carrierStereoPhase','carrierStereoPhaseDeg');bindRange('lowerStereoPhase','lowerStereoPhaseDeg');bindRange('upperStereoPhase','upperStereoPhaseDeg');
+$('normalization').addEventListener('change',e=>{state.normalization=e.target.value;sendAudioState();updateUI()});$('stereoMode').addEventListener('change',e=>{state.stereoMode=e.target.value;sendAudioState();updateUI()});$('sidebandStereoMode').addEventListener('change',e=>{state.sidebandStereoMode=e.target.value;sendAudioState();updateUI()});$('stereoNormalization').addEventListener('change',e=>{state.stereoNormalization=e.target.value;sendAudioState();updateUI()});
+$('relationMode').addEventListener('change',e=>{state.relationMode=e.target.value;sendAudioState();updateUI()});
+$('gridDisplay').addEventListener('change',e=>{state.gridDisplay=e.target.value;updateUI()});
+$('gateBtn').addEventListener('click',toggleGate); document.querySelectorAll('.modeBtn').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode))); $('wavBtn').addEventListener('click',renderWav);
+
+
+function pushRing(ring,values,write,count){for(let i=0;i<values.length;i++){ring[write]=values[i];write=(write+1)%ring.length;if(count<ring.length)count++}return[write,count]}
+function handleWorkletMessage(e){const d=e.data;if(d.type==='samples'){[audioWrite,audioCount]=pushRing(audioRing,d.raw,audioWrite,audioCount);[leftWrite,leftCount]=pushRing(leftRing,d.left,leftWrite,leftCount);[rightWrite,rightCount]=pushRing(rightRing,d.right,rightWrite,rightCount)}else if(d.type==='envelope'&&!historyFrozen){[envWrite,envCount]=pushRing(envRing,d.values,envWrite,envCount)}else if(d.type==='gateSettledOff'){historyFrozen=true;updateUI()}}
+function ringLatest(ring,write,count,n){const take=Math.min(count,n),out=new Float32Array(take),start=(write-take+ring.length)%ring.length;for(let i=0;i<take;i++)out[i]=ring[(start+i)%ring.length];return out}
+function fftRadix2(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}for(let len=2;len<=n;len<<=1){const ang=-TAU/len,wlr=Math.cos(ang),wli=Math.sin(ang);for(let i=0;i<n;i+=len){let wr=1,wi=0;for(let j=0;j<len/2;j++){const uR=re[i+j],uI=im[i+j],vR=re[i+j+len/2]*wr-im[i+j+len/2]*wi,vI=re[i+j+len/2]*wi+im[i+j+len/2]*wr;re[i+j]=uR+vR;im[i+j]=uI+vI;re[i+j+len/2]=uR-vR;im[i+j+len/2]=uI-vI;const nw=wr*wlr-wi*wli;wi=wr*wli+wi*wlr;wr=nw}}}}
+function exactWindowDft(src,f,sr){let re=0,im=0,windowSum=0;for(let i=0;i<src.length;i++){const win=.5-.5*Math.cos(TAU*i/(src.length-1)),q=TAU*f*i/sr,x=src[i]*win;re+=x*Math.cos(q);im-=x*Math.sin(q);windowSum+=win}return{re,im,phase:Math.atan2(im,re),mag:2*Math.hypot(re,im)/Math.max(1,windowSum)}}
+function gridOrdersForDisplay(gd){if(!gridVisible())return[];if(state.gridDisplay==='local'){const a=[];for(let k=Math.max(1,gd.N-2);k<=gd.N+2;k++)a.push(k);return a}const a=[];for(let k=1;k*gd.g<=160;k++)if(k*gd.g>=10)a.push(k);return a}
+function drawGridLines(ctx,w,h,dpr,gd,strongOnly=false){if(!gridVisible())return;for(const k of gridOrdersForDisplay(gd)){const f=k*gd.g;if(f<10||f>160)continue;const x=spectrumX(f,w),strong=Math.abs(k-gd.N)<=1;ctx.strokeStyle=strong?'rgba(255,204,122,.32)':'rgba(143,183,255,.13)';ctx.lineWidth=(strong?1.2:.7)*dpr;ctx.setLineDash(strong?[3*dpr,3*dpr]:[2*dpr,5*dpr]);ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}ctx.setLineDash([])}
+function drawLiveFft(){
+ const c=$('fft'),{ctx,w,h,dpr}=baseCanvas(c),gd=gridData();drawGridLines(ctx,w,h,dpr,gd);
+ const needed=Math.round(audioSampleRate*FFT_SECONDS),leftSrc=ringLatest(leftRing,leftWrite,leftCount,needed),rightSrc=ringLatest(rightRing,rightWrite,rightCount,needed);
+ if(leftSrc.length<Math.min(2048,needed)||rightSrc.length<Math.min(2048,needed)){ctx.fillStyle='#aab8cc';ctx.font=`${12*dpr}px system-ui`;ctx.fillText('Start audio to fill the 500 ms L/R FFT window',12*dpr,24*dpr);$('fftInfo').textContent='waiting';return}
+ const srcLength=Math.min(leftSrc.length,rightSrc.length);let size=1;while(size<srcLength)size<<=1;
+ const lRe=new Float64Array(size),lIm=new Float64Array(size),rRe=new Float64Array(size),rIm=new Float64Array(size);let windowSum=0;
+ for(let i=0;i<srcLength;i++){const win=.5-.5*Math.cos(TAU*i/(srcLength-1));lRe[i]=leftSrc[i]*win;rRe[i]=rightSrc[i]*win;windowSum+=win}
+ fftRadix2(lRe,lIm);fftRadix2(rRe,rIm);
+ const minF=10,maxF=160,minDb=-100,maxDb=0,logMin=Math.log(minF),logSpan=Math.log(maxF)-logMin;
+ const stripTop=h*.70,stripBottom=h*.90,phaseMid=(stripTop+stripBottom)/2;
+ ctx.strokeStyle='rgba(170,190,220,.20)';ctx.lineWidth=Math.max(.7,dpr*.65);ctx.beginPath();ctx.moveTo(0,phaseMid);ctx.lineTo(w,phaseMid);ctx.stroke();
+ ctx.fillStyle='rgba(210,220,238,.58)';ctx.font=`${9*dpr}px system-ui`;ctx.textAlign='right';ctx.fillText('Δφ +180°',w-4*dpr,stripTop+10*dpr);ctx.fillText('0°',w-4*dpr,phaseMid-3*dpr);ctx.fillText('−180°',w-4*dpr,stripBottom-3*dpr);
+ // Inter-channel phase difference. Suppress bins below −70 dB to avoid meaningless phase in the noise floor.
+ ctx.strokeStyle='#d9b7ff';ctx.lineWidth=Math.max(1.1,dpr);ctx.beginPath();let phaseStarted=false;
+ for(let k=1;k<size/2;k++){const f=k*audioSampleRate/size;if(f<minF||f>maxF)continue;const lMag=2*Math.hypot(lRe[k],lIm[k])/Math.max(1,windowSum),rMag=2*Math.hypot(rRe[k],rIm[k])/Math.max(1,windowSum),levelDb=20*Math.log10(Math.max(1e-10,Math.max(lMag,rMag)));if(levelDb<-70){phaseStarted=false;continue}const delta=Math.atan2(Math.sin(Math.atan2(rIm[k],rRe[k])-Math.atan2(lIm[k],lRe[k])),Math.cos(Math.atan2(rIm[k],rRe[k])-Math.atan2(lIm[k],lRe[k]))),x=(Math.log(f)-logMin)/logSpan*w,y=stripTop+(Math.PI-delta)/TAU*(stripBottom-stripTop);if(!phaseStarted){ctx.moveTo(x,y);phaseStarted=true}else ctx.lineTo(x,y)}ctx.stroke();
+ const drawMagnitude=(re,im,stroke)=>{ctx.strokeStyle=stroke;ctx.lineWidth=Math.max(1,dpr);ctx.beginPath();let started=false;for(let k=1;k<size/2;k++){const f=k*audioSampleRate/size;if(f<minF||f>maxF)continue;const mag=2*Math.hypot(re[k],im[k])/Math.max(1,windowSum),db=Math.max(minDb,20*Math.log10(Math.max(1e-10,mag))),x=(Math.log(f)-logMin)/logSpan*w,y=h-(db-minDb)/(maxDb-minDb)*h;if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)}ctx.stroke()};
+ drawMagnitude(lRe,lIm,'#9fc5ff');drawMagnitude(rRe,rIm,'#ffcc7a');
+ ctx.fillStyle='#aab8cc';ctx.font=`${10*dpr}px system-ui`;ctx.textAlign='center';for(const f of [10,20,40,80,160]){const x=(Math.log(f)-logMin)/logSpan*w;ctx.fillText(f+' Hz',x,h-5*dpr)}ctx.textAlign='left';for(const db of [0,-20,-40,-60,-80,-100]){const y=h-(db-minDb)/(maxDb-minDb)*h;ctx.fillText(db+' dB',4*dpr,Math.max(10*dpr,y-3*dpr))}
+ ctx.font=`${10*dpr}px system-ui`;ctx.fillStyle='#9fc5ff';ctx.fillText('L magnitude',8*dpr,14*dpr);ctx.fillStyle='#ffcc7a';ctx.fillText('R magnitude',75*dpr,14*dpr);ctx.fillStyle='#d9b7ff';ctx.fillText('Δφ R−L',150*dpr,14*dpr);
+ const n=normalizationData();ctx.setLineDash([4*dpr,4*dpr]);for(const comp of n.comps){if(comp.f<minF||comp.f>maxF)continue;const x=(Math.log(comp.f)-logMin)/logSpan*w;ctx.strokeStyle='rgba(255,204,122,.55)';ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}ctx.setLineDash([]);
+ $('fftInfo').textContent=`${FFT_SECONDS.toFixed(1)} s · L/R magnitude · Δφ R−L · phase gate −70 dB${gridVisible()?' · grid '+gd.g.toFixed(2)+' Hz':''}`
+}
+
+function phasesForReadout(){const c=componentModel();const get=n=>c.find(x=>x.name===n);const carrier=get('Carrier');const lower=get('Lower');const upper=get('Upper');return{pc:carrier?deg(carrier.p):state.carrierPhaseDeg,pl:lower?deg(lower.p):null,pu:upper?deg(upper.p):null}}
+function updateUI(){
+ const n=normalizationData(),ph=phasesForReadout(),gd=gridData(),sm=n.stereo,off=stereoOffsets();
+ $('fcVal').textContent=state.fc.toFixed(1)+' Hz';$('fmVal').textContent=gd.fm.toFixed(2)+' Hz';$('fm').value=gd.fm;$('relationMode').value=state.relationMode;$('relationModeVal').textContent=state.relationMode==='free'?'FREE':state.relationMode==='beat'?'BEAT':'GRID';$('gridOrderVal').textContent='N = '+gd.N;$('gridOffsetVal').textContent=(gd.delta>=0?'+':'')+gd.delta.toFixed(2)+' Hz';$('gridDisplay').value=state.gridDisplay;$('gridDisplayVal').textContent=state.gridDisplay;$('carrierLevelVal').textContent=state.carrierLevel.toFixed(3);$('sidebandLevelVal').textContent=state.sidebandLevel.toFixed(3);$('masterVal').textContent=state.master.toFixed(2);$('carrierPhaseVal').textContent=state.carrierPhaseDeg.toFixed(0)+'°';$('sidebandPhaseVal').textContent=state.sidebandPhaseDeg.toFixed(0)+'°';$('normalizationVal').textContent=state.normalization;
+ $('stereoMode').value=state.stereoMode;$('stereoModeVal').textContent=state.stereoMode;$('stereoPhaseVal').textContent=state.stereoPhaseDeg.toFixed(0)+'°';$('sidebandStereoMode').value=state.sidebandStereoMode;$('sidebandStereoModeVal').textContent=state.sidebandStereoMode;$('carrierStereoPhaseVal').textContent=state.carrierStereoPhaseDeg.toFixed(0)+'°';$('lowerStereoPhaseVal').textContent=state.lowerStereoPhaseDeg.toFixed(0)+'°';$('upperStereoPhaseVal').textContent=state.upperStereoPhaseDeg.toFixed(0)+'°';$('stereoNormalization').value=state.stereoNormalization;$('stereoNormalizationVal').textContent=state.stereoNormalization;
+ document.querySelectorAll('.modeBtn').forEach(b=>b.classList.toggle('active',b.dataset.mode===state.mode));$('gateBtn').classList.toggle('active',state.gate);$('gateBtn').textContent=state.gate?'Gate: ON':'Play / Gate';$('status').textContent=audioCtx?(state.gate?'PLAYING':'AUDIO READY'):'AUDIO IDLE';
+ $('sidebandPhase').disabled=state.mode!=='phase';$('sidebandPhase').closest('.control').style.opacity=state.mode==='phase'?1:.38;const gridOn=gridVisible();$('fm').disabled=state.relationMode==='grid';$('fm').closest('.control').style.opacity=state.relationMode==='grid'?.42:1;document.querySelectorAll('.gridControl').forEach(el=>el.style.opacity=gridOn?1:.38);$('gridOrder').disabled=!gridOn;$('gridOffset').disabled=state.relationMode!=='grid';$('gridOffset').closest('.control').style.opacity=state.relationMode==='grid'?1:.38;$('gridDisplay').disabled=!gridOn;
+ const show=(sel,on)=>document.querySelectorAll(sel).forEach(el=>{el.style.opacity=on?1:.38;el.querySelectorAll('input,select').forEach(x=>x.disabled=!on)});
+ show('.stereoWhole',state.stereoMode==='whole'||state.stereoMode==='sideband');show('.stereoSideband',state.stereoMode==='sideband');show('.stereoCarrier',state.stereoMode==='carrier'||state.stereoMode==='component');show('.stereoLower',state.stereoMode==='component');show('.stereoUpper',state.stereoMode==='component');
+ const lower=state.fc-gd.fm,upper=state.fc+gd.fm,phaseLC=ph.pl==null?'—':wrapDeg(ph.pl-ph.pc).toFixed(0)+'°',phaseUC=ph.pu==null?'—':wrapDeg(ph.pu-ph.pc).toFixed(0)+'°',sbRel=(ph.pl==null||ph.pu==null)?'—':wrapDeg(ph.pu-ph.pl).toFixed(0)+'°';
+ $('readout').innerHTML=`<div class="readoutGrid"><div><div class="groupTitle">Components</div><strong>Lower:</strong> ${lower.toFixed(2)} Hz<br><strong>Carrier:</strong> ${state.fc.toFixed(2)} Hz<br><strong>Upper:</strong> ${upper.toFixed(2)} Hz<br><strong>Active:</strong> ${n.comps.map(c=>c.name).join(' + ')}${gridVisible()?`<br><strong>Relation:</strong> ${state.relationMode==='beat'?'Beat Lock':'Grid Lock'}<br><strong>Grid:</strong> ${gd.g.toFixed(3)} Hz · orders ${gd.N-1}/${gd.N}/${gd.N+1}<br><strong>Offset δ:</strong> ${(gd.delta>=0?'+':'')+gd.delta.toFixed(3)} Hz<br><strong>Drift period:</strong> ${Number.isFinite(gd.period)?gd.period.toFixed(2)+' s':'locked'}`:''}</div><div><div class="groupTitle">Stereo phase</div><strong>Mode:</strong> ${state.stereoMode}<br><strong>Lower Δφ:</strong> ${wrapDeg(deg(off.Lower)).toFixed(0)}°<br><strong>Carrier Δφ:</strong> ${wrapDeg(deg(off.Carrier)).toFixed(0)}°<br><strong>Upper Δφ:</strong> ${wrapDeg(deg(off.Upper)).toFixed(0)}°<br><strong>Correlation:</strong> ${sm.corr.toFixed(4)}<br><strong>Mid RMS:</strong> ${(sm.midRms*n.gain*state.master).toFixed(4)}<br><strong>Side RMS:</strong> ${(sm.sideRms*n.gain*state.master).toFixed(4)}<br><strong>Mono sum peak:</strong> ${(sm.monoSumPeak*n.gain*state.master).toFixed(4)}</div><div><div class="groupTitle">Level metrics</div><strong>Left RMS:</strong> ${(sm.lRms*n.gain*state.master).toFixed(4)}<br><strong>Right RMS:</strong> ${(sm.rRms*n.gain*state.master).toFixed(4)}<br><strong>Left peak:</strong> ${(sm.leftPeak*n.gain*state.master).toFixed(4)}<br><strong>Right peak:</strong> ${(sm.rightPeak*n.gain*state.master).toFixed(4)}<br><strong>Base normalization:</strong> ${n.baseGain.toFixed(4)} ×<br><strong>Stereo normalization:</strong> ${n.stereoGain.toFixed(4)} ×<br><strong>Total gain:</strong> ${n.gain.toFixed(4)} ×<br>${n.limited?'<span class="warn">Safety-limited below clipping</span>':'<span class="ok">Peak-safe</span>'}</div></div>`;
+}
+function resizeCanvas(c){const dpr=Math.min(2,devicePixelRatio||1),r=c.getBoundingClientRect(),w=Math.max(10,Math.round(r.width*dpr)),h=Math.max(10,Math.round(r.height*dpr));if(c.width!==w||c.height!==h){c.width=w;c.height=h}return{ctx:c.getContext('2d'),w,h,dpr}}
+function baseCanvas(c){const o=resizeCanvas(c),x=o.ctx;x.clearRect(0,0,o.w,o.h);x.strokeStyle='#1d2a3e';x.lineWidth=1;for(let i=1;i<4;i++){x.beginPath();x.moveTo(0,o.h*i/4);x.lineTo(o.w,o.h*i/4);x.stroke()}x.beginPath();x.moveTo(0,o.h/2);x.lineTo(o.w,o.h/2);x.stroke();return o}
+function drawLine(canvas,values,min,max){const{ctx,w,h}=baseCanvas(canvas);ctx.strokeStyle='#9fc5ff';ctx.lineWidth=Math.max(1,devicePixelRatio||1);ctx.beginPath();values.forEach((v,i)=>{const x=i/(values.length-1)*w,y=h-(v-min)/(max-min)*h;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
+function drawStereoWave(canvas,left,right,min,max){const{ctx,w,h,dpr}=baseCanvas(canvas);const draw=(values,stroke)=>{ctx.strokeStyle=stroke;ctx.lineWidth=Math.max(1,dpr);ctx.beginPath();values.forEach((v,i)=>{const x=i/Math.max(1,values.length-1)*w,y=h-(v-min)/(max-min)*h;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()};draw(left,'#9fc5ff');draw(right,'#ffcc7a');ctx.font=`${10*dpr}px system-ui`;ctx.textAlign='left';ctx.fillStyle='#9fc5ff';ctx.fillText('L',7*dpr,13*dpr);ctx.fillStyle='#ffcc7a';ctx.fillText('R',24*dpr,13*dpr)}
+function analyticState(comps,t){let re=0,im=0,dre=0,dim=0;for(const c of comps){const q=TAU*c.f*t+c.p,co=Math.cos(q),si=Math.sin(q),w=TAU*c.f;re+=c.a*co;im+=c.a*si;dre-=c.a*w*si;dim+=c.a*w*co}const amp=Math.hypot(re,im),den=re*re+im*im;const fi=den>1e-12?(re*dim-im*dre)/(TAU*den):NaN;return{amp,fi}}
+function drawPhasePlane(comps,g){const c=$('phasePlane'),{ctx,w,h,dpr}=resizeCanvas(c);ctx.clearRect(0,0,w,h);const padL=42*dpr,padR=12*dpr,padT=12*dpr,padB=28*dpr,plotW=w-padL-padR,plotH=h-padT-padB;const duration=1,N=1200,pts=[];let maxAmp=.01,maxDev=1;for(let i=0;i<N;i++){const t=i/(N-1)*duration,a=analyticState(comps,t),amp=a.amp*g,dev=a.fi-state.fc;if(Number.isFinite(dev)){pts.push({amp,dev});maxAmp=Math.max(maxAmp,amp);maxDev=Math.max(maxDev,Math.abs(dev))}}maxAmp*=1.08;maxDev=Math.max(effectiveFm()*1.15,maxDev*1.08,1);ctx.strokeStyle='#1d2a3e';ctx.lineWidth=1;for(let i=0;i<=4;i++){const x=padL+plotW*i/4;ctx.beginPath();ctx.moveTo(x,padT);ctx.lineTo(x,padT+plotH);ctx.stroke()}for(let i=0;i<=4;i++){const y=padT+plotH*i/4;ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+plotW,y);ctx.stroke()}const y0=padT+plotH/2;ctx.strokeStyle='#40506b';ctx.beginPath();ctx.moveTo(padL,y0);ctx.lineTo(padL+plotW,y0);ctx.stroke();ctx.strokeStyle='rgba(159,197,255,.82)';ctx.lineWidth=Math.max(1.2*dpr,1);ctx.beginPath();let started=false;for(const p of pts){const x=padL+(p.amp/maxAmp)*plotW,y=padT+(maxDev-p.dev)/(2*maxDev)*plotH;if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)}ctx.stroke();if(pts.length){const p=pts[pts.length-1],x=padL+(p.amp/maxAmp)*plotW,y=padT+(maxDev-p.dev)/(2*maxDev)*plotH;ctx.fillStyle='#ffcc7a';ctx.beginPath();ctx.arc(x,y,3.5*dpr,0,TAU);ctx.fill()}ctx.fillStyle='#aab8cc';ctx.font=`${10*dpr}px system-ui`;ctx.textAlign='center';ctx.fillText('Instantaneous amplitude |z(t)|',padL+plotW/2,h-7*dpr);ctx.save();ctx.translate(11*dpr,padT+plotH/2);ctx.rotate(-Math.PI/2);ctx.fillText('Instantaneous frequency deviation fi − fc',0,0);ctx.restore();ctx.textAlign='right';ctx.fillText('+'+maxDev.toFixed(1)+' Hz',padL-5*dpr,padT+9*dpr);ctx.fillText('0 Hz',padL-5*dpr,y0+3*dpr);ctx.fillText('−'+maxDev.toFixed(1)+' Hz',padL-5*dpr,padT+plotH);ctx.textAlign='left';ctx.fillText('0',padL,h-8*dpr);ctx.textAlign='right';ctx.fillText(maxAmp.toFixed(3),padL+plotW,h-8*dpr);$('phasePlaneInfo').textContent='1 s · x amplitude · y fi − fc'}
+const spectrumHandles=[];let spectrumDrag=null;
+function spectrumX(f,w){const minF=10,maxF=160;return(Math.log(Math.max(minF,f))-Math.log(minF))/(Math.log(maxF)-Math.log(minF))*w}
+function spectrumFreq(x,w){const minF=10,maxF=160;return Math.exp(Math.log(minF)+Math.max(0,Math.min(1,x/w))*(Math.log(maxF)-Math.log(minF)))}
+function drawSpectrum(){
+ const c=$('spectrum'),{ctx,w,h,dpr}=baseCanvas(c),n=normalizationData(),gd=gridData(),st=stereoComponents(),baseY=h-25*dpr,topY=18*dpr;
+ spectrumHandles.length=0;drawGridLines(ctx,w,h,dpr,gd);ctx.font=`${10*dpr}px system-ui`;ctx.textAlign='center';
+ for(const l of st.left){
+   const r=st.right.find(x=>x.name===l.name)||l,px=spectrumX(l.f,w),ampNorm=l.name==='Carrier'?state.carrierLevel/.6:state.sidebandLevel/.3,py=baseY-Math.max(0,Math.min(1,ampNorm))*(baseY-topY),dx=5*dpr;
+   ctx.strokeStyle='#9fc5ff';ctx.lineWidth=2*dpr;ctx.beginPath();ctx.moveTo(px-dx,baseY);ctx.lineTo(px-dx,py);ctx.stroke();
+   ctx.fillStyle='#9fc5ff';ctx.beginPath();ctx.arc(px-dx,py,5*dpr,0,TAU);ctx.fill();
+   ctx.strokeStyle='#ffcc7a';ctx.beginPath();ctx.moveTo(px+dx,baseY);ctx.lineTo(px+dx,py);ctx.stroke();
+   ctx.fillStyle='#ffcc7a';ctx.beginPath();ctx.arc(px+dx,py,5*dpr,0,TAU);ctx.fill();
+   const phaseL=wrapDeg(deg(l.p)),phaseR=wrapDeg(deg(r.p)),delta=wrapDeg(phaseR-phaseL);
+   ctx.fillStyle='#d9e4f8';ctx.fillText(l.f.toFixed(1)+' Hz',px,baseY+15*dpr);
+   ctx.fillStyle='#9fc5ff';ctx.fillText('L '+phaseL.toFixed(0)+'°',px-19*dpr,Math.max(11*dpr,py-9*dpr));
+   ctx.fillStyle='#ffcc7a';ctx.fillText('R '+phaseR.toFixed(0)+'°',px+19*dpr,Math.max(11*dpr,py-9*dpr));
+   ctx.fillStyle='#aab8cc';ctx.fillText('Δ '+delta.toFixed(0)+'°',px,Math.max(11*dpr,py-22*dpr));
+   spectrumHandles.push({name:l.name,x:px,y:py,r:14*dpr});
+ }
+ ctx.textAlign='left';ctx.fillStyle='#9fc5ff';ctx.fillText('L',8*dpr,h-7*dpr);ctx.fillStyle='#ffcc7a';ctx.fillText('R',25*dpr,h-7*dpr);
+ if(gridVisible()){ctx.fillStyle='rgba(255,204,122,.78)';ctx.fillText(`grid ${gd.g.toFixed(2)} Hz · ${gd.N-1}:${gd.N}:${gd.N+1} · δ ${(gd.delta>=0?'+':'')+gd.delta.toFixed(2)} Hz`,48*dpr,13*dpr)}
+ $('spectrumInfo').textContent=`same magnitudes · explicit L/R phases · ${state.relationMode==='grid'?'drag carrier = fc · sideband = grid offset δ':state.relationMode==='beat'?'drag carrier = fc · sideband = fixed beat fm':'drag handles · x frequency · y level'}`
+}
+function spectrumPointer(e){const c=$('spectrum'),r=c.getBoundingClientRect(),sx=c.width/r.width,sy=c.height/r.height;return{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy}}
+function applySpectrumDrag(p){if(!spectrumDrag)return;const c=$('spectrum'),f=spectrumFreq(p.x,c.width);if(spectrumDrag.name==='Carrier'){state.fc=Math.max(20,Math.min(80,f));$('fc').value=state.fc}else if(state.relationMode==='grid'){const g=gridFundamental(),targetFm=Math.abs(f-state.fc);state.gridOffset=Math.max(-2,Math.min(2,targetFm-g));$('gridOffset').value=state.gridOffset}else{state.fm=Math.max(1,Math.min(30,Math.abs(f-state.fc)));$('fm').value=state.fm}const baseY=c.height-25*Math.min(2,devicePixelRatio||1),topY=18*Math.min(2,devicePixelRatio||1),level=Math.max(0,Math.min(1,(baseY-p.y)/(baseY-topY)));if(spectrumDrag.name==='Carrier'){state.carrierLevel=level*.6;$('carrierLevel').value=state.carrierLevel}else{state.sidebandLevel=level*.3;$('sidebandLevel').value=state.sidebandLevel}sendAudioState();updateUI()}
+$('spectrum').addEventListener('pointerdown',e=>{const p=spectrumPointer(e);let best=null,bestD=Infinity;for(const h of spectrumHandles){const d=Math.hypot(p.x-h.x,p.y-h.y);if(d<bestD){best=h;bestD=d}}if(best&&bestD<=best.r*1.7){spectrumDrag={name:best.name};$('spectrum').setPointerCapture(e.pointerId);applySpectrumDrag(p);e.preventDefault()}});
+$('spectrum').addEventListener('pointermove',e=>{if(!spectrumDrag)return;applySpectrumDrag(spectrumPointer(e));e.preventDefault()});
+function endSpectrumDrag(e){if(!spectrumDrag)return;spectrumDrag=null;try{$('spectrum').releasePointerCapture(e.pointerId)}catch(_){}}
+$('spectrum').addEventListener('pointerup',endSpectrumDrag);$('spectrum').addEventListener('pointercancel',endSpectrumDrag);
+function drawStereoPhasePlane(){
+ const c=$('stereoPhasePlane'),{ctx,w,h,dpr}=baseCanvas(c),n=normalizationData(),st=n.stereo.st,N=1600;let max=0,pts=[];
+ for(let i=0;i<N;i++){const t=i/(N-1),q=sampleStereo(st,t),l=q.l*n.gain,r=q.r*n.gain;pts.push([l,r]);max=Math.max(max,Math.abs(l),Math.abs(r))}
+ max=Math.max(.05,max*1.08);ctx.strokeStyle='#9fc5ff';ctx.lineWidth=Math.max(1,dpr);ctx.beginPath();pts.forEach((p,i)=>{const x=w/2+p[0]/max*w*.46,y=h/2-p[1]/max*h*.46;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();ctx.fillStyle='#aab8cc';ctx.font=`${10*dpr}px system-ui`;ctx.fillText('L',w-16*dpr,h/2-4*dpr);ctx.fillText('R',w/2+5*dpr,12*dpr);$('stereoPhasePlaneInfo').textContent=`corr ${n.stereo.corr.toFixed(3)}`;
+}
+function drawPhasePointer(id,label,degValue,active){
+ const c=$(id),{ctx,w,h,dpr}=resizeCanvas(c);ctx.clearRect(0,0,w,h);const cx=w/2,cy=h*.48,r=Math.min(w,h)*.28,ang=rad(degValue)-Math.PI/2;ctx.strokeStyle='#263247';ctx.lineWidth=2*dpr;ctx.beginPath();ctx.arc(cx,cy,r,0,TAU);ctx.stroke();ctx.strokeStyle=active?'#9fc5ff':'#40506b';ctx.lineWidth=3*dpr;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(ang)*r,cy+Math.sin(ang)*r);ctx.stroke();ctx.fillStyle=active?'#dbe8ff':'#718198';ctx.beginPath();ctx.arc(cx,cy,3*dpr,0,TAU);ctx.fill();ctx.font=`${10*dpr}px system-ui`;ctx.textAlign='center';ctx.fillText(label,cx,h-18*dpr);ctx.fillText(active?wrapDeg(degValue).toFixed(0)+'°':'inactive',cx,h-5*dpr)
+}
+function drawPhasePointers(){const off=stereoOffsets(),names=componentModel().map(c=>c.name);drawPhasePointer('lowerPointer','Lower Δφ',deg(off.Lower),names.includes('Lower'));drawPhasePointer('carrierPointer','Carrier Δφ',deg(off.Carrier),names.includes('Carrier'));drawPhasePointer('upperPointer','Upper Δφ',deg(off.Upper),names.includes('Upper'));$('phasePointersInfo').textContent='explicit phase offsets'}
+function drawVisuals(nowMs){if(nowMs-lastVisualMs<33){requestAnimationFrame(drawVisuals);return}lastVisualMs=nowMs;const n=normalizationData(),comps=n.comps,g=n.gain;const shortDur=.5;const N=900,leftWave=[],rightWave=[],env=[],st=stereoComponents();for(let i=0;i<N;i++){const t=i/(N-1)*shortDur,q=sampleStereo(st,t);leftWave.push(q.l*g);rightWave.push(q.r*g);env.push(sampleEnvelope(comps,t)*g)}const lim=Math.max(.05,n.normalizedPeak*1.08);drawStereoWave($('wave'),leftWave,rightWave,-lim,lim);drawLine($('envelope'),env,0,Math.max(.05,...env)*1.08);$('waveInfo').textContent=(shortDur*1000).toFixed(0)+' ms · L blue · R amber';$('envInfo').textContent='analytic component envelope';drawSpectrum();drawPhasePlane(comps,g);drawStereoPhasePlane();drawPhasePointers();const hist=ringLatest(envRing,envWrite,envCount,ENV_RATE);drawLine($('history'),hist.length?hist:[0,0],0,Math.max(.05,...hist)*1.08);$('historyInfo').textContent=(historyFrozen?'FROZEN':'LIVE')+` · ${(hist.length/ENV_RATE).toFixed(2)} s`;if(nowMs-lastFftMs>=100){lastFftMs=nowMs;drawLiveFft()}requestAnimationFrame(drawVisuals)}
+
+function encodeStereoWav(left,right,sr){const frames=Math.min(left.length,right.length),b=new ArrayBuffer(44+frames*4),v=new DataView(b);const put=(o,t)=>[...t].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));put(0,'RIFF');v.setUint32(4,36+frames*4,true);put(8,'WAVE');put(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,2,true);v.setUint32(24,sr,true);v.setUint32(28,sr*4,true);v.setUint16(32,4,true);v.setUint16(34,16,true);put(36,'data');v.setUint32(40,frames*4,true);for(let i=0;i<frames;i++){for(const [ch,x0] of [[0,left[i]],[1,right[i]]]){const x=Math.max(-1,Math.min(1,x0));v.setInt16(44+i*4+ch*2,x<0?x*32768:x*32767,true)}}return new Blob([b],{type:'audio/wav'})}
+function renderWav(){const sr=audioCtx?.sampleRate||48000,dur=5,n=normalizationData(),st=stereoComponents(),left=new Float32Array(sr*dur),right=new Float32Array(sr*dur),fade=Math.round(sr*.02);for(let i=0;i<left.length;i++){let a=1;if(i<fade)a=.5-.5*Math.cos(Math.PI*i/fade);if(i>left.length-fade)a*=.5-.5*Math.cos(Math.PI*(left.length-i)/fade);const q=sampleStereo(st,i/sr),g=n.gain*state.master*a;left[i]=q.l*g;right[i]=q.r*g}const blob=encodeStereoWav(left,right,sr),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`am-sideband-stereo-${state.stereoMode}-${state.mode}-${state.fc.toFixed(1)}Hz-${effectiveFm().toFixed(1)}Hz.wav`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+
+
+window.addEventListener('resize',()=>{}); updateUI(); requestAnimationFrame(drawVisuals);
+</script>
+</body>
+</html>
